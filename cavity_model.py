@@ -114,10 +114,13 @@ for f in foffset:
 	v_pi_f = (y_pi_f[:, 0] + 1j*y_pi_f[:, 1])*np.exp(1j*y_pi_f[:, 2])
 
 	# plot results
-	plt.plot(np.real(v_pi_f), np.imag(v_pi_f), label='basis offset=%s' %f)
+	plt.plot(np.real(v_pi_f), np.imag(v_pi_f), label='basis offset=%s Hz' %f)
 
 plt.title("Cavity Step Response: Drive @ "+r'$\omega_{ref}$')
 plt.xlabel(r'$\Re (\vec V_{\mu})$ [V]')
 plt.ylabel(r'$\Im (\vec V_{\mu})$ [V]')
+plt.ylim([-0.5e4, 3e4])
+plt.xlim([-0.5e4, 5e4])
+plt.axes().set_aspect('equal')
 plt.legend()
 plt.show()
