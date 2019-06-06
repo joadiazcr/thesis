@@ -142,6 +142,7 @@ foffset = [100.0, 200.0]
 foffset_s = 0.2
 
 fig, ax1 = plt.subplots()
+fig2, ax3 = plt.subplots()
 ax2 = ax1.twinx()
 lns = []
 colors = ['c','m']
@@ -151,8 +152,9 @@ for idx, f in enumerate(foffset):
     y_pi_d = odeint(model, z0, t, args_pi)
     v_pi_d = (y_pi_d[:, 0] + 1j*y_pi_d[:, 1])*np.exp(1j*y_pi_d[:, 2])
 
-    # plot results
+    # plot results for magnitude
     lns += ax1.plot(t, np.abs(v_pi_d), label='Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f+')')
+    ax3.plot(t, np.unwrap(np.angle(v_pi_d)), label='Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f+')')
 
     delta_f = np.ones(nt)*f
     delta_f[0:int(nt*0.4)] = 0.0
@@ -164,10 +166,13 @@ drive_in[0:int(nt*0.1)] = 0.0
 lns += ax1.plot(t, drive_in*max(np.abs(v_pi_d)), label='Drive')
 labs = [l.get_label() for l in lns]
 
+ax3.set_title("Cavity Step Response: 1 pC Beam step")
 plt.title("Cavity Step Response: 1 pC Beam step")
 ax1.set_xlabel('Time [s]')
-ax1.set_ylabel(r'$| \vec V_{\rm acc}|$ [V]')
+ax3.set_xlabel('Time [s]')
+ax3.set_ylabel(r'$\angle \vec V_{\mu}$ [rad]')
 ax2.set_ylabel('Frequency [Hz]')
+ax1.set_ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 ax1.set_ylim(0, 6e5)
 ax2.set_ylim(0, foffset[1]*1.5)
 ax1.legend(lns, labs, loc=0)
