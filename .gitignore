@@ -1,0 +1,13 @@
+*~
+*.o
+*.so
+*.pyc
+*.dat
+*.aux
+*.dvi
+*.nav
+*.out
+*.snm
+*.toc
+*.log
+*.backup
