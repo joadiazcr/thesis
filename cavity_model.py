@@ -9,7 +9,7 @@ import json
 # based on CMOC Equation 3.13
 # Function that returns dS/dt
 
-
+# Cavity model with Kg and Ib real numbers
 def model(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg, Ib,
           foffset, Kg_s=0.0, foffset_s=0.0):
     if t < Kg_s: Kg = 0.0
@@ -28,8 +28,34 @@ def model(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg, Ib,
     yr, yi, theta = z
 
     dthetadt = w_d
-    dydt_r = (a * Kg + b * Ib)*np.cos(theta) - (c * yr)
-    dydt_i = -(a * Kg + b * Ib)*np.sin(theta) - (c * yi)
+    dydt_r = (a * Kg - b * Ib)*np.cos(theta) - (c * yr)
+    dydt_i = -(a * Kg - b * Ib)*np.sin(theta) - (c * yi)
+    return [dydt_r, dydt_i, dthetadt]
+
+
+# Cavity model with Kg complex number
+def model_b(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg_r, Kg_i, Ib,
+          foffset, Kg_s=0.0, foffset_s=0.0):
+    if t < Kg_s: 
+	Kg_r = 0.0
+	Kg_i = 0.0
+    if t < foffset_s: foffset = 0.0
+
+    Rg = RoverQ * Qg
+    Kdrive = 2 * np.sqrt(Rg)
+    Ql = 1.0 / (1.0/Qg + 1.0/Q0 + 1.0/Qprobe)
+    K_beam = RoverQ * Ql
+    w_d = 2 * np.pi * foffset
+
+    a = Kdrive * bw
+    b = K_beam * bw
+    c = bw
+
+    yr, yi, theta = z
+
+    dthetadt = w_d
+    dydt_r = (a * Kg_r - b * Ib)*np.cos(theta) - (c * yr) + a * Kg_i * np.sin(theta)
+    dydt_i = -(a * Kg_r - b * Ib)*np.sin(theta) - (c * yi) + a * Kg_i * np.cos(theta)
     return [dydt_r, dydt_i, dthetadt]
 
 
@@ -37,7 +63,7 @@ def step_response(args, t):
     # initial condition
     z0 = [0, 0, 0]  # y_r, y_i, theta
 
-    y = odeint(model, z0, t, args)
+    y = odeint(model_b, z0, t, args)
     v = (y[:, 0] + 1j*y[:, 1])*np.exp(1j*y[:, 2])
 
     return v
@@ -48,7 +74,7 @@ def ssa():
     for c in cs:
         v_in = np.linspace(0, 10, 1000)  # 0.2 seconds
         v_out = v_in * (1 + v_in**c)**(-1/c)
-        plt.plot(v_in, v_out, label='c=%s' %c)
+        plt.plot(v_in, v_out, label='c=%s' % c)
     plt.legend()
     plt.show()
 
@@ -61,7 +87,7 @@ def phase():
     shift = [0, np.pi/4.0, np.pi/2.0, 3 * np.pi/4.0, np.pi]
     for sh in shift:
         v_out = v_in * np.exp(1j * sh)
-        plt.plot(t, np.real(v_out), label='shift=%s' %sh)
+        plt.plot(t, np.real(v_out), label='shift=%s' % sh)
     plt.legend()
     plt.show()
 
@@ -69,7 +95,10 @@ def phase():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Cavity Simulation')
     parser.add_argument('-f', type=str, choices=['stp', 'pi', 'ssa', 'phase'],
-                       help='Function: spt (step response) or pi or ssa or phase')
+                        help='Function: spt for Step Response,\
+                        pi for PI controller,\
+                        ssa for SSA saturation curve\
+                        or phase phase shift')
 
     args = parser.parse_args()
 
@@ -105,9 +134,9 @@ if __name__ == "__main__":
         foffset = 0
         Kg = 1
         Ib = 0
-        args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, Ib, foffset)
-        args_8pi9 = (RoverQ_8pi9, Qg_8pi9, Q0_8pi9, Qprobe_8pi9, bw, Kg, Ib, foffset)
-        args_pi9 = (RoverQ_pi9, Qg_pi9, Q0_pi9, Qprobe_pi9, bw, Kg, Ib, foffset)
+        args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, 0, Ib, foffset)
+        args_8pi9 = (RoverQ_8pi9, Qg_8pi9, Q0_8pi9, Qprobe_8pi9, bw, Kg, 0, Ib, foffset)
+        args_pi9 = (RoverQ_pi9, Qg_pi9, Q0_pi9, Qprobe_pi9, bw, Kg, 0, Ib, foffset)
         v_pi = step_response(args_pi, t)
         v_8pi9 = step_response(args_8pi9, t)
         v_pi9 = step_response(args_pi9, t)
@@ -129,9 +158,9 @@ if __name__ == "__main__":
         Kg = 0
         # current equivalent to 1pC of charge. Step size is 1us for CMOC simulations
         Ib = 1 * 10 ** (-12) / (10**(-6))
-        args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, Ib, foffset)
-        args_8pi9 = (RoverQ_8pi9, Qg_8pi9, Q0_8pi9, Qprobe_8pi9, bw, Kg, Ib, foffset)
-        args_pi9 = (RoverQ_pi9, Qg_pi9, Q0_pi9, Qprobe_pi9, bw, Kg, Ib, foffset)
+        args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, 0, Ib, foffset)
+        args_8pi9 = (RoverQ_8pi9, Qg_8pi9, Q0_8pi9, Qprobe_8pi9, bw, Kg, 0, Ib, foffset)
+        args_pi9 = (RoverQ_pi9, Qg_pi9, Q0_pi9, Qprobe_pi9, bw, Kg, 0, Ib, foffset)
         v_pi_I = step_response(args_pi, t)
         v_8pi9_I = step_response(args_8pi9, t)
         v_pi9_I = step_response(args_pi9, t)
@@ -155,7 +184,7 @@ if __name__ == "__main__":
         Ib = 0
         foffset = [0, 10, 20, 100]
         for f in foffset:
-            args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, Ib, f)
+            args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, 0, Ib, f)
             v_pi_f = step_response(args_pi, t)
 
             # plot results
@@ -186,7 +215,7 @@ if __name__ == "__main__":
         colors = ['c', 'm']
 
         for idx, f in enumerate(foffset):
-            args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, Ib, f, Kg_s, foffset_s)
+            args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, 0, Ib, f, Kg_s, foffset_s)
             v_pi_d = step_response(args_pi, t)
 
             # plot results for magnitude
