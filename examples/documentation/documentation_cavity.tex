@@ -1,0 +1,140 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[latin1]{inputenc}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{a4wide}
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{wrapfig}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows}
+\usepackage{appendix}
+\usepackage{amsmath}
+\usepackage{tablefootnote}
+\usepackage{tabto}
+
+\usepackage{bm, amssymb, pifont, pgfplots, multirow, float, soul, color, verbatim, indentfirst}
+
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\lstset{
+   breaklines=true,
+   basicstyle=\ttfamily
+}
+\usepackage[figurewithin=section,tablewithin=section]{caption}
+\setcounter{secnumdepth}{4}
+\pagestyle{headings}
+\begin{document}
+\title{\textbf{Cavity Model}}
+\author{Jorge Alberto Diaz Cruz}
+\date{\today}
+\numberwithin{equation}{section}
+\maketitle
+\setcounter{tocdepth}{2}
+\tableofcontents
+\newpage
+\section{From math to code}
+This section describes the mathematical manipulation of the cavity's differential equation so it can be implement in python code. Let's start with a set of two first order diferential equations derived in \cite{ref:LCLS-II System Simulations}:
+
+\begin{equation}
+  \frac{d\vec{S}_{\mu}}{dt} = -\omega_{f_{\mu}}\vec{S}_{\mu} + \omega_{f_{\mu}}e^{-j\theta_{\mu}}\left(2\vec{K}_g\sqrt{R_{g_{\mu}}}
+    - R_{b_{\mu}}\vec{I}_{\rm beam} \right)
+\label{eq: dS_dt}
+\end{equation}	
+
+\begin{equation}
+\frac{d\theta_{\mu}}{dt} = \omega_{d_\mu}
+\label{eq: d0_dt}
+\end{equation}
+
+Where the subcript $\mu$ represents each eigenmode of the cavity and:
+
+\begin{equation}
+\vec{V}_{\mu} = \vec{S}_{\mu}e^{j\theta_{\mu}}
+\label{eq:V_mu}
+\end{equation}
+\\
+$\omega_{f_{\mu}}$:\tab Cavity bandwidth
+\\$\vec K_{\rm g}$:\tab Incident wave amplitude in $\sqrt{\rm Watts}$
+\\$R_{\rm g_{\mu}}=Q_{\rm g_{\mu}}(R/Q)_{\mu}$:\tab Coupling impedance of the drive port
+\\$\vec I_{\rm beam}$:\tab Beam current
+\\$R_{\rm b_{\mu}}=Q_{\rm L_{\mu}}(R/Q)_{\mu}$:\tab Coupling impedance to the beam
+\\$\omega_{d_{\mu}}=2\pi\Delta f_{\mu}$:\tab Detune frequency
+\\
+\\Let's now define:
+\\
+\\$a=2\sqrt{R_{g_{\mu}}}\omega_{f_{\mu}}$
+\\$b=R_{b_{\mu}}\omega_{f_{\mu}}$
+\\$c=\omega_{f_{\mu}}$
+\\
+\\So we can write equation ~\ref{eq: dS_dt} as:
+
+\begin{equation}
+  \frac{d\vec{S}_{\mu}}{dt} = -c\vec{S}_{\mu} + e^{-j\theta_{\mu}}\left(a\vec{K}_g - b\vec{I}_{\rm beam} \right)
+\label{eq: dS_dt_reduced}
+\end{equation}
+
+For a complex $\vec{S}_{\mu}=S_r+jS_i$ we can split equation \ref{eq: dS_dt_reduced} in the real and imaginary parts:
+
+\begin{equation}
+  \frac{d\vec{S}_{\mu}}{dt} = -c(S_r+jS_i) + (cos\theta-jsin\theta)(a\vec{K}_g - b\vec{I}_{\rm beam})
+\label{eq: dS_dt_reduced_Scomplex}
+\end{equation}
+
+\begin{equation}
+  \frac{dS_r}{dt} = (a\vec{K}_g - b\vec{I}_{\rm beam})cos\theta-cS_r
+\label{eq: dSr_dt_reduced_Scomplex}
+\end{equation}
+
+\begin{equation}
+  \frac{dS_i}{dt} = -(a\vec{K}_g - b\vec{I}_{\rm beam})sin\theta-cS_i
+\label{eq: dSi_dt_reduced_Scomplex}
+\end{equation}
+
+If we also assume a complex incident wave $\vec{K}_g=K_r+jK_i$ we have:
+
+\begin{equation}
+  \frac{dS_r}{dt} = (aK_r - b\vec{I}_{\rm beam})cos\theta-cS_r+aK_isin\theta
+\label{eq: dSr_dt_reduced_S_K_complex}
+\end{equation}
+
+\begin{equation}
+  \frac{dS_i}{dt} = -(aK_r - b\vec{I}_{\rm beam})sin\theta-cS_i+aK_icos\theta
+\label{eq: dSi_dt_reduced_S_K_complex}
+\end{equation}
+
+Equations \ref{eq: d0_dt}, \ref{eq: dSr_dt_reduced_S_K_complex} and \ref{eq: dSi_dt_reduced_S_K_complex} can be implemendted in python using the following code:
+
+{\fontfamily{qcr}\selectfont\small
+\# Define Cavity model
+\\def cavity(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg\_r, Kg\_i, Ib,
+          foffset):
+\\
+\\        Rg = RoverQ * Qg
+\\        Kdrive = 2 * np.sqrt(Rg)
+\\        Ql = 1.0 / (1.0/Qg + 1.0/Q0 + 1.0/Qprobe)
+\\        K\_beam = RoverQ * Ql
+\\        w\_d = 2 * np.pi * foffset
+\\
+\\        a = Kdrive * bw
+\\        b = K\_beam * bw
+\\        c = bw
+\\
+\\        yr, yi, theta = z
+\\
+\\        dthetadt = w\_d
+\\        dydt\_r = (a * Kg\_r - b * Ib)*np.cos(theta) - (c * yr) + a * Kg\_i * np.sin(theta)
+\\        dydt\_i = -(a * Kg\_r - b * Ib)*np.sin(theta) - (c * yi) + a * Kg\_i * np.cos(theta)
+\\        return dydt\_r, dydt\_i, dthetadt
+}
+
+\newpage
+\begin{thebibliography}{19}   % Use for  1-9  references
+\bibitem{ref:LCLS-II System Simulations}
+LBNL LLRF team, ``LCLS-II System Simulations: Physics,''
+October 7, 2015.
+\end{thebibliography}
+
+\end{document}
