@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 
+# Example from https://www.youtube.com/watch?v=k46nCvOBllA 
+
 #define vehicle model.
 def vehicle(v, t, u, load):
 	# inputs
@@ -38,8 +40,8 @@ sp_store[0:] = sp # step up pedal position. u variable
 # PI controller
 #Kp = 1.0 / 1.2
 #Ki = Kp / 20.0
-Kp = 3.0
-Ki = 0.1
+Kp = 1.0
+Ki = 2.0
 sum_init = 0.0# Integral(sumation) initial value
 e = np.zeros(nsteps) # error initialization
 ie = np.zeros(nsteps) # integral of the error initialization
