@@ -1,7 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
+import sys
+import os
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+
+import cavity_model
 
 # Define Cavity model
 def cavity(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg_r, Kg_i, Ib,
@@ -25,11 +30,6 @@ def cavity(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg_r, Kg_i, Ib,
 	return dydt_r, dydt_i, dthetadt
 
 
-def ssa(v_in):
-	c = 1.0
-	v_out = v_in * (1 + v_in**c)**(-1/c)
-	return v_out
-
 # Pi mode cavity parameters
 bw = 104  # where is this number coming from? Cavity bw 16Hz
 RoverQ_pi = 1036.0
@@ -38,9 +38,16 @@ Q0_pi = 2.7 * 10**10
 Qprobe_pi = 2.0 * 10**9
 
 # Cavity conditions
-foffset = 0
+foffset = 0.0
+foffset_s = 0.2 
 Kg = 1
 Ib = 0
+ssa_bw = 53000.0 * 2.0 * np.pi  # [Hz]
+
+# SSA parameters
+c = 5.0
+ssa_bw = 1e6
+power_max = 3.8e3
 
 # PI controller
 # Nominal Configuration
@@ -50,12 +57,12 @@ Kp_a = stable_gbw*2*np.pi/bw
 Ki_a = Kp_a*(2*np.pi*control_zero)
 Kp_p = 1.0
 Ki_p = 10.0
-Kp = np.array([1/350000.0, Kp_p])
+Kp = np.array([3500.0, Kp_p])
 Ki = np.array([1/800.0, Ki_p])
 
 # Simulation time variables
-tf = 0.2  # Total simulation time
-nsteps = 500  # number of time steps
+tf = 0.5  # Total simulation time
+nsteps = 20000  # number of time steps
 delta_t = tf/(nsteps-1)
 ts = np.linspace(0, tf, nsteps)  # linearly spaced time vector
 
@@ -63,8 +70,8 @@ ts = np.linspace(0, tf, nsteps)  # linearly spaced time vector
 step = np.array([[0, 0]])
 
 # set point
-sp_amp = 350000.0
-sp_phase = np.pi/16.0
+sp_amp = 3000000
+sp_phase = 0.0
 sp = np.array([sp_amp, sp_phase])
 
 # Initializing simulation variables
@@ -73,23 +80,29 @@ e = np.array([[0, 0]])  # error initial value
 ie = np.array([[0, 0]])  # Integral of the eror initial value
 v_s = np.array([[0]])  # Mode cavity voltage
 z0 = np.zeros(3)
+u = np.zeros(2)
+error = np.zeros(2)
+sum_init = np.zeros(2)
 
 for i in range(nsteps-1):
 
 	v_s = np.append(v_s, (z0[0] + 1j*z0[1])*np.exp(1j*z0[2]))
-	error = sp - [np.abs(v_s[i]), np.angle(v_s[i])]
-	e = np.append(e, [error], axis=0)
-        sum_init = sum_init + error * delta_t
-	ie = np.append(ie, [sum_init], axis=0)
+
+	if (i * delta_t) < foffset_s: 
+		f_os = 0.0
+	else:
+		f_os = foffset 
 	
 	if Kp[0] == 0.0 and Ki[0] == 0.0:
 		u = Kg
 	else:
-		u = Kp * error + Ki * sum_init
+	        u[0], error[0], sum_init[0] = cavity_model.PI(Kp[0], Ki[0], sp[0], np.abs(v_s[i]), sum_init[0], delta_t)
+                u[1] = 0.0
+                e = np.append(e, [error], axis=0)
+                ie = np.append(ie, [sum_init], axis=0)
+        v_last = step[-1, 0]
 
-        print u[0]
-        u[0] = ssa(u[0]) # SSA saturation effect
-        print u[0]
+	u[0] = cavity_model.ssa(v_last, u[0], ssa_bw * 2.0 * np.pi, c, delta_t)
 
 	if Kp[0] != 0.0 and Ki[0] != 0.0:
 		step = np.append(step, [u], axis=0)
@@ -97,8 +110,8 @@ for i in range(nsteps-1):
 	real = u[0] * np.cos(u[1])
 	imag = u[0] * np.sin(u[1])
 
-	args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, real, imag, Ib, foffset)
-	z = odeint(cavity, z0, [0, delta_t], args=args_pi)
+	args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, real, imag, Ib, f_os)
+	z = odeint(cavity_model.model_b, z0, [0, delta_t], args=args_pi)
 	z0 = z[-1] # take the last value of z
 
 # plot results for Amplitude
@@ -121,6 +134,7 @@ plt.subplot(2, 2, 4)
 plt.plot(ts, ie[:, 0], 'b-', linewidth=3, label='Integral of error')
 plt.xlabel('Time [s]')
 plt.legend()
+plt.show()
 
 # plot results for phase
 fig = plt.figure()
@@ -142,4 +156,4 @@ plt.subplot(2, 2, 4)
 plt.plot(ts, ie[:, 1], 'b-', linewidth=3, label='Integral of error')
 plt.xlabel('Time [s]')
 plt.legend()
-plt.show()
+#plt.show()
