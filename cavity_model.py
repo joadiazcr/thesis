@@ -69,15 +69,39 @@ def step_response(args, t):
     return v
 
 
-def ssa():
-    cs = [1, 2.5, 6.3, 15.8, 39.8]
-    for c in cs:
-        v_in = np.linspace(0, 10, 1000)  # 0.2 seconds
-        v_out = v_in * (1 + v_in**c)**(-1/c)
-        plt.plot(v_in, v_out, label='c=%s' % c)
-    plt.legend()
-    plt.show()
+# SSA low-pass filter model
+def ssa_lpf(y0, t, u, ssa_bw):
+    dydt = -ssa_bw * y0 + ssa_bw * u
+    return dydt
 
+
+# SSA saturation model
+def ssa_sat(c, v_in):
+    return v_in * (1.0 + (np.abs(v_in)**c))**(-1.0/c)
+
+
+# SSA step response (low-pass filter + saturation)
+def ssa(v_last, v_in, ssa_bw, c, t):
+    v_out = odeint(ssa_lpf, v_last, [0, t], (v_in, ssa_bw))
+    v_out_sat = ssa_sat(c, v_out[-1])  # Saturation
+    return v_out_sat
+
+
+# PI Controller
+def PI(Kp, Ki, sp, x_in, sum_error, delta_t):
+    error = sp - x_in
+
+    sat = 1.278
+    state = (sum_error + error * delta_t) * Ki
+    scale = np.abs(state)/sat
+    if scale > 1.0: state = state/scale 
+    u = state + Kp * error
+    scale = np.abs(u)/sat
+    if scale > 1.0: u = u/scale 
+
+    sum_error = sum_error + error * delta_t
+    #u =  Kp * error + Ki * sum_error
+    return u, error, sum_error
 
 def phase():
     t = np.linspace(0, 1, 1000)
@@ -116,6 +140,7 @@ if __name__ == "__main__":
     Qg_pi = 4.0 * 10**7
     Q0_pi = 2.7 * 10**10
     Qprobe_pi = 2.0 * 10**9
+    Ql_pi = 1.0 / (1.0/Qg_pi + 1.0/Q0_pi + 1.0/Qprobe_pi)
 
     # 8pi/9 mode
     RoverQ_8pi9 = 20
@@ -143,6 +168,9 @@ if __name__ == "__main__":
 
         # plot results
         plt.plot(t, np.abs(v_pi), label='pi')
+        plt.vlines(1.0/bw, 0, np.abs(v_pi[-1]), 'r', '--')
+        plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg, 0, t[-1], 'r', '--')
+        plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg*(1.0-np.exp(-1)), 0, t[-1], 'r', '--')
         print "Pi Drive coupling = %s" % max(np.abs(v_pi))
         plt.plot(t, np.abs(v_8pi9), label='8pi/9')
         print "8pi/9 Drive coupling = %s" % max(np.abs(v_8pi9))
@@ -167,6 +195,9 @@ if __name__ == "__main__":
 
         # plot results
         plt.plot(t, np.abs(v_pi_I), label='pi')
+        plt.vlines(1.0/bw, 0, np.abs(v_pi_I[-1]), 'r', '--')
+        plt.hlines(Ql_pi*RoverQ_pi*Ib, 0, t[-1], 'r', '--')
+        plt.hlines(Ql_pi*RoverQ_pi*Ib*(1.0-np.exp(-1)), 0, t[-1], 'r', '--')
         print "Pi beam coupling = %s" % max(np.abs(v_pi_I))
         plt.plot(t, np.abs(v_8pi9_I), label='8pi/9')
         print "8Pi/9 beam coupling = %s" % max(np.abs(v_8pi9_I))
@@ -259,7 +290,52 @@ if __name__ == "__main__":
             pi.pid(f, s, wc, cavity, ssa_bw, stable_gbw, control_zero, conf, 1)
 
     if args.f == 'ssa':
-        ssa()
+        c = 50.0
+        ssa_bw = 1e6
+        power_max = 3.8e3
+
+        Tmax = 1e-6
+        Tstep = 1e-9
+        trang = np.arange(0, Tmax, Tstep)
+        nt = len(trang)
+
+        v_out = np.zeros(nt, dtype=np.complex)
+        v_out_sat = np.zeros(nt, dtype=np.complex)
+        v_in = np.sqrt(power_max) * 0.6 / np.sqrt(power_max)  # Scale input signal (sqrt(W) -> Normalized units)
+
+        for i in xrange(1, nt):
+            v_last = v_out[i-1]
+            v_out[i] = ssa(v_last, v_in, ssa_bw * 2.0 * np.pi, c, Tstep)  # SSA model (lpf + sat)
+            v_out_sat[i] = v_out[i] * np.sqrt(power_max)
+        plt.plot(trang, np.abs(v_out_sat), label='SSA Output', linewidth=3) # Scale output signal (sqrt(W) -> Normalized units)
+        plt.ylim([0, 50])
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(1, 0))
+        plt.title('SSA Test', fontsize=40, y=1.01)
+        plt.xlabel('Time [s]', fontsize=30)
+        plt.ylabel('Amplitude '+r'[$\sqrt{W}$]', fontsize=30)
+        plt.legend(loc='upper right')
+
+        plt.show()
+
+        cs = [1, 2.5, 5.0, 15.8, 39.8]
+        top_drive = 95  # %
+        for c in cs:
+            v_in = np.arange(0, 10, 1e-4)
+            v_out = np.zeros(len(v_in), dtype=np.complex)
+            for i in xrange(len(v_in)):
+                v_out[i] = ssa_sat(c, v_in[i])
+            plt.plot(v_in.real, v_out.real, label='c=%s' % c)
+
+            # Sweep input
+            for i in xrange(len(v_in)):
+                v_out[i] = ssa_sat(c, v_in[i])
+                if v_out[i].real >= (top_drive/100.0):
+                    V_sat = v_in[i]
+                    print V_sat
+                    break
+
+        plt.legend()
+        plt.show()
 
     if args.f == 'phase':
         phase()
