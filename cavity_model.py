@@ -77,14 +77,18 @@ def ssa_lpf(y0, t, u, ssa_bw):
 
 # SSA saturation model
 def ssa_sat(c, v_in):
-    return v_in * (1.0 + (np.abs(v_in)**c))**(-1.0/c)
+    v_out = v_in * ((1.0 + (np.abs(v_in)**c))**(-1.0/c))
+    return v_out
 
 
 # SSA step response (low-pass filter + saturation)
-def ssa(v_last, v_in, ssa_bw, c, t):
-    v_out = odeint(ssa_lpf, v_last, [0, t], (v_in, ssa_bw))
+def ssa(v_last, v_in, ssa_bw, c, t, power_max):
+    v_in = v_in/np.sqrt(power_max)
+    v_last = v_last/np.sqrt(power_max)
+    v_out = odeint(ssa_lpf, v_last, [0, t], (v_in, ssa_bw))  # Low-pass filter
     v_out_sat = ssa_sat(c, v_out[-1])  # Saturation
-    return v_out_sat
+    v_out_sat = v_out_sat * np.sqrt(power_max)
+    return v_out_sat, v_out[-1] * np.sqrt(power_max)
 
 
 # PI Controller
@@ -290,9 +294,9 @@ if __name__ == "__main__":
             pi.pid(f, s, wc, cavity, ssa_bw, stable_gbw, control_zero, conf, 1)
 
     if args.f == 'ssa':
-        c = 50.0
+        c = 5.0
         ssa_bw = 1e6
-        power_max = 3.8e3
+        power_max = 3800.0
 
         Tmax = 1e-6
         Tstep = 1e-9
@@ -301,13 +305,12 @@ if __name__ == "__main__":
 
         v_out = np.zeros(nt, dtype=np.complex)
         v_out_sat = np.zeros(nt, dtype=np.complex)
-        v_in = np.sqrt(power_max) * 0.6 / np.sqrt(power_max)  # Scale input signal (sqrt(W) -> Normalized units)
+        v_in = np.sqrt(power_max) * 0.6  # 60% of maximum power
+        v_last = 0.0
 
-        for i in xrange(1, nt):
-            v_last = v_out[i-1]
-            v_out[i] = ssa(v_last, v_in, ssa_bw * 2.0 * np.pi, c, Tstep)  # SSA model (lpf + sat)
-            v_out_sat[i] = v_out[i] * np.sqrt(power_max)
-        plt.plot(trang, np.abs(v_out_sat), label='SSA Output', linewidth=3) # Scale output signal (sqrt(W) -> Normalized units)
+        for m in xrange(1, nt):
+            v_out[m], v_last = ssa(v_last, v_in, ssa_bw * 2.0 * np.pi, c, Tstep, power_max)  # SSA model (lpf + sat)
+        plt.plot(trang, np.abs(v_out), label='SSA Output', linewidth=3) 
         plt.ylim([0, 50])
         plt.ticklabel_format(style='sci', axis='x', scilimits=(1, 0))
         plt.title('SSA Test', fontsize=40, y=1.01)
@@ -316,6 +319,8 @@ if __name__ == "__main__":
         plt.legend(loc='upper right')
 
         plt.show()
+
+	exit()
 
         cs = [1, 2.5, 5.0, 15.8, 39.8]
         top_drive = 95  # %
