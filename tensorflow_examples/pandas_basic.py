@@ -9,18 +9,18 @@ population = pd.Series([852469, 1015785, 485199])
 
 cities = pd.DataFrame({ 'City name': city_names, 'Population': population })
 print "\n %s" %cities
-print(type(cities['City name']))
+print "\n City name type: %s" % (type(cities['City name']))
 print cities['City name']
-print(type(cities['City name'][1]))
+print "\n Type of each element of City name: %s" % (type(cities['City name'][1]))
 print cities['City name'][1]
-print(type(cities[0:2]))
+print "\n Type of cites[0:2]: %s" % (type(cities[0:2]))
 print cities[0:2]
-print population / 1000.
+print "\nPopulation/1000"
+print population / 1000.0
+print "\nlog(population)"
 print np.log(population)
-population.apply(lambda val: val > 1000000)
 
 cities['Area square miles'] = pd.Series([46.87, 176.53, 97.92])
-cities['Population density'] = cities['Population'] / cities['Area square miles']
 cities['Population density'] = cities['Population'] / cities['Area square miles']
 print "\n %s" %cities
 
@@ -37,7 +37,10 @@ print "\n %s" %cities
 
 
 california_housing_dataframe = pd.read_csv("https://download.mlcc.google.com/mledu-datasets/california_housing_train.csv", sep=",")
-print "\n %s" %california_housing_dataframe.head()
-print "\n %s" %california_housing_dataframe.describe()
+print "\nCalifornia housing data frame head"
+print california_housing_dataframe.head()
+print "\nCalifornia housing data frame describe"
+print california_housing_dataframe.describe()
+
 california_housing_dataframe.hist('housing_median_age')
 plt.show()
