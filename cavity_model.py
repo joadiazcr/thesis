@@ -33,12 +33,12 @@ def model(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg, Ib,
     return [dydt_r, dydt_i, dthetadt]
 
 
-# Cavity model with Kg complex number
-def model_b(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg_r, Kg_i, Ib,
+# Cavity model with Kg complex number test
+def model_complex(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg_r, Kg_i, Ib,
           foffset, Kg_s=0.0, foffset_s=0.0):
     if t < Kg_s: 
-	Kg_r = 0.0
-	Kg_i = 0.0
+        Kg_r = 0.0
+        Kg_i = 0.0
     if t < foffset_s: foffset = 0.0
 
     Rg = RoverQ * Qg
@@ -63,7 +63,7 @@ def step_response(args, t):
     # initial condition
     z0 = [0, 0, 0]  # y_r, y_i, theta
 
-    y = odeint(model_b, z0, t, args)
+    y = odeint(model_complex, z0, t, args)
     v = (y[:, 0] + 1j*y[:, 1])*np.exp(1j*y[:, 2])
 
     return v
@@ -94,18 +94,41 @@ def ssa(v_last, v_in, ssa_bw, c, t, power_max):
 # PI Controller
 def PI(Kp, Ki, sp, x_in, sum_error, delta_t):
     error = sp - x_in
-
     sat = 1.278
-    state = (sum_error + error * delta_t) * Ki
+    #sat = 78.83
+    sum_error = sum_error + error * delta_t
+    state = sum_error * Ki
     scale = np.abs(state)/sat
-    if scale > 1.0: state = state/scale 
+    if scale > 1.0: 
+        state = state/scale 
     u = state + Kp * error
     scale = np.abs(u)/sat
-    if scale > 1.0: u = u/scale 
-
-    sum_error = sum_error + error * delta_t
+    if scale > 1.0: 
+        u = u/scale
+        sum_error = sum_error - error * delta_t 
+    
+    print ("error =  %s, sum error = %s, u = %s") % (error, sum_error, u)
     #u =  Kp * error + Ki * sum_error
     return u, error, sum_error
+
+# PI Controller
+def PI_v(Kp, Ki, sp, v0, sum_init, delta_t, clip):
+        error = sp - v0
+        sum_init = sum_init + error * delta_t
+
+        if Kp == 0.0 and Ki == 0.0:
+               u = step[i]
+        else:
+               u = Kp * error + Ki * sum_init
+        # clip inputs to -50% to 100%
+        if u >= clip:
+               u = clip
+               sum_init = sum_init - error *delta_t
+        if u <= 0.0:
+               u = 0.0
+               sum_init = sum_init - error *delta_t
+        print ("error =  %s, sum error = %s, u = %s") % (error, sum_init, u)
+        return u, error, sum_init
 
 def phase():
     t = np.linspace(0, 1, 1000)
@@ -175,11 +198,11 @@ if __name__ == "__main__":
         plt.vlines(1.0/bw, 0, np.abs(v_pi[-1]), 'r', '--')
         plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg, 0, t[-1], 'r', '--')
         plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg*(1.0-np.exp(-1)), 0, t[-1], 'r', '--')
-        print "Pi Drive coupling = %s" % max(np.abs(v_pi))
+        print ("Pi Drive coupling = %s") % max(np.abs(v_pi))
         plt.plot(t, np.abs(v_8pi9), label='8pi/9')
-        print "8pi/9 Drive coupling = %s" % max(np.abs(v_8pi9))
+        print ("8pi/9 Drive coupling = %s") % max(np.abs(v_8pi9))
         plt.plot(t, np.abs(v_pi9), label='pi/9')
-        print "pi/9 Drive coupling = %s" % max(np.abs(v_pi9))
+        print ("pi/9 Drive coupling = %s") % max(np.abs(v_pi9))
         plt.title("Cavity Step Response: Drive @ "+r'$\omega_{\mu}$')
         plt.xlabel('Time [s]')
         plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
@@ -202,11 +225,11 @@ if __name__ == "__main__":
         plt.vlines(1.0/bw, 0, np.abs(v_pi_I[-1]), 'r', '--')
         plt.hlines(Ql_pi*RoverQ_pi*Ib, 0, t[-1], 'r', '--')
         plt.hlines(Ql_pi*RoverQ_pi*Ib*(1.0-np.exp(-1)), 0, t[-1], 'r', '--')
-        print "Pi beam coupling = %s" % max(np.abs(v_pi_I))
+        print ("Pi beam coupling = %s") % max(np.abs(v_pi_I))
         plt.plot(t, np.abs(v_8pi9_I), label='8pi/9')
-        print "8Pi/9 beam coupling = %s" % max(np.abs(v_8pi9_I))
+        print ("8Pi/9 beam coupling = %s") % max(np.abs(v_8pi9_I))
         plt.plot(t, np.abs(v_pi9_I), label='pi/9')
-        print "Pi beam coupling = %s" % max(np.abs(v_pi9_I))
+        print ("Pi beam coupling = %s") % max(np.abs(v_pi9_I))
         plt.title("Cavity Step Response: 1 pC Beam step")
         plt.xlabel('Time [s]')
         plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
@@ -299,7 +322,7 @@ if __name__ == "__main__":
         power_max = 3800.0
 
         Tmax = 1e-6
-        Tstep = 1e-9
+        Tstep = 1e-8
         trang = np.arange(0, Tmax, Tstep)
         nt = len(trang)
 
@@ -320,8 +343,6 @@ if __name__ == "__main__":
 
         plt.show()
 
-	exit()
-
         cs = [1, 2.5, 5.0, 15.8, 39.8]
         top_drive = 95  # %
         for c in cs:
@@ -336,7 +357,7 @@ if __name__ == "__main__":
                 v_out[i] = ssa_sat(c, v_in[i])
                 if v_out[i].real >= (top_drive/100.0):
                     V_sat = v_in[i]
-                    print V_sat
+                    print (V_sat)
                     break
 
         plt.legend()
