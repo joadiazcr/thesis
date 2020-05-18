@@ -102,7 +102,7 @@ for i in range(nsteps-1):
                 ie = np.append(ie, [sum_init], axis=0)
         v_last = step[-1, 0]
 
-	u[0] = cavity_model.ssa(v_last, u[0], ssa_bw * 2.0 * np.pi, c, delta_t)
+	u[0], v_last = cavity_model.ssa(v_last, u[0], ssa_bw * 2.0 * np.pi, c, delta_t, power_max)
 
 	if Kp[0] != 0.0 and Ki[0] != 0.0:
 		step = np.append(step, [u], axis=0)
@@ -111,7 +111,7 @@ for i in range(nsteps-1):
 	imag = u[0] * np.sin(u[1])
 
 	args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, real, imag, Ib, f_os)
-	z = odeint(cavity_model.model_b, z0, [0, delta_t], args=args_pi)
+	z = odeint(cavity_model.model_complex, z0, [0, delta_t], args=args_pi)
 	z0 = z[-1] # take the last value of z
 
 # plot results for Amplitude

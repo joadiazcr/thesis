@@ -107,7 +107,7 @@ def PI(Kp, Ki, sp, x_in, sum_error, delta_t):
         u = u/scale
         sum_error = sum_error - error * delta_t 
     
-    print ("error =  %s, sum error = %s, u = %s") % (error, sum_error, u)
+    #print ("error =  %s, sum error = %s, u = %s") % (error, sum_error, u)
     #u =  Kp * error + Ki * sum_error
     return u, error, sum_error
 
