@@ -57,8 +57,8 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
     # Calculate corresponding values for ki and kp
     Kp = stable_gbw*2*np.pi/wc
     Ki = Kp*(2*np.pi*control_zero)
-    print "Proportional gain kp=%s" % Kp
-    print "Integral gain ki=%s" % Ki
+    print ("Proportional gain kp=%s") % Kp
+    print ("Integral gain ki=%s") % Ki
 
     # Calculate transfer functions
     PI = (Kp + Ki/s)
@@ -76,8 +76,8 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
     GM = -gain[f_180_index]
     PM = 180 + phase[f_c_index]
 
-    print "%s, %s, %s" % (gain_at_f_c, f_c, f_c_index)
-    print "%s, %s, %s" % (phase_at_f_180, f_180, f_180_index)
+    print ("%s, %s, %s") % (gain_at_f_c, f_c, f_c_index)
+    print ("%s, %s, %s") % (phase_at_f_180, f_180, f_180_index)
 
     if plot == 1:
         plt.subplot(3, 1, 1)
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     elif args.f == 'pid':
         configurations = ['nominal', 'high', 'hobicat']
         for conf in configurations:
-            print "%s Configuration" %conf
+            print ("%s Configuration") %conf
             with open("%s.json" % conf, "r") as read_file:
                 data = json.load(read_file)
             stable_gbw = data['stable_gbw']
@@ -155,10 +155,10 @@ if __name__ == "__main__":
             control_zero = data['control_zero']
             pid(f, s, wc, cavity, ssa_bw, stable_gbw, control_zero, conf, 1)
     elif args.f == 'swp':
-        print "Proportional gain sweep"
+        print ("Proportional gain sweep")
         plt.subplot(2, 1, 1)
         conf = 'nominal'
-	for ff in [0.1, 2, 3, 10]:
+        for ff in [0.1, 2, 3, 10]:
             with open("%s.json" % conf, "r") as read_file:
                 data = json.load(read_file)
             stable_gbw = data['stable_gbw']*ff
@@ -169,7 +169,7 @@ if __name__ == "__main__":
         unity = np.ones(len(s))
         plt.semilogx(f, 20.0*np.log10(np.abs(unity)), '--')
 
-        print "Integral gain sweep"
+        print ("Integral gain sweep")
         plt.subplot(2, 1, 2)
         conf = 'nominal'
         for ff in [0.1, 2, 3, 10]:
@@ -187,13 +187,13 @@ if __name__ == "__main__":
         plt.show()
 
     elif args.f == 'ir':
-        print "Impulse response"
+        print ("Impulse response")
         T = np.arange(0, 0.5, 0.0001)  # Frequency from 1 to 10^6 Hz
         sys = control.tf2ss([1], [1/wc,1])
         T, yout = control.impulse_response(sys, T)
         #plt.plot(T, yout)
 
-        print "Step response"
+        print ("Step response")
         cavity =  control.tf([1], [1/wc,1])
         kp = 10
         ki = 5
