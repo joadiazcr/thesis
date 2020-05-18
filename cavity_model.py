@@ -303,7 +303,7 @@ if __name__ == "__main__":
         plt.show()
 
     if args.f == 'pi':
-        f = np.linspace(1, 1e6, 1e6)  # Frequency from 1 to 10^6 Hz
+        f = np.linspace(1, 10**6, 10**6)  # Frequency from 1 to 10^6 Hz
         s = 1j*2.0*np.pi*f  # Laplace operator s=jw=j*2*pi*f
         wc = 104.3  # rad/s. bandwidth? where is this number coming from? from 16.6 Hz cavity bandwidth
         cavity = 1.0/(1.0+s/wc)  # Cavity transfer function. Cavity acts as a low pass filter
@@ -331,7 +331,7 @@ if __name__ == "__main__":
         v_in = np.sqrt(power_max) * 0.6  # 60% of maximum power
         v_last = 0.0
 
-        for m in xrange(1, nt):
+        for m in range(1, nt):
             v_out[m], v_last = ssa(v_last, v_in, ssa_bw * 2.0 * np.pi, c, Tstep, power_max)  # SSA model (lpf + sat)
         plt.plot(trang, np.abs(v_out), label='SSA Output', linewidth=3) 
         plt.ylim([0, 50])
@@ -348,12 +348,12 @@ if __name__ == "__main__":
         for c in cs:
             v_in = np.arange(0, 10, 1e-4)
             v_out = np.zeros(len(v_in), dtype=np.complex)
-            for i in xrange(len(v_in)):
+            for i in range(len(v_in)):
                 v_out[i] = ssa_sat(c, v_in[i])
             plt.plot(v_in.real, v_out.real, label='c=%s' % c)
 
             # Sweep input
-            for i in xrange(len(v_in)):
+            for i in range(len(v_in)):
                 v_out[i] = ssa_sat(c, v_in[i])
                 if v_out[i].real >= (top_drive/100.0):
                     V_sat = v_in[i]

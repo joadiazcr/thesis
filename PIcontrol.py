@@ -57,8 +57,8 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
     # Calculate corresponding values for ki and kp
     Kp = stable_gbw*2*np.pi/wc
     Ki = Kp*(2*np.pi*control_zero)
-    print ("Proportional gain kp=%s") % Kp
-    print ("Integral gain ki=%s") % Ki
+    print ("Proportional gain kp=%s", Kp)
+    print ("Integral gain ki=%s", Ki)
 
     # Calculate transfer functions
     PI = (Kp + Ki/s)
@@ -76,8 +76,8 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
     GM = -gain[f_180_index]
     PM = 180 + phase[f_c_index]
 
-    print ("%s, %s, %s") % (gain_at_f_c, f_c, f_c_index)
-    print ("%s, %s, %s") % (phase_at_f_180, f_180, f_180_index)
+    print ("%s, %s, %s", (gain_at_f_c, f_c, f_c_index))
+    print ("%s, %s, %s", (phase_at_f_180, f_180, f_180_index))
 
     if plot == 1:
         plt.subplot(3, 1, 1)
@@ -120,7 +120,7 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
         plt.xlabel('Frequency [Hz]')
         PM_text = 'PM = %d$^{\circ}$' % int(PM)
         plt.annotate(PM_text, xy=(f_c*0.5, -250))
-        f_180_text = r'$f_{\rm 180} \approx %d\,{\rm kHz}$' % int(round(f_180*1e-3))
+        f_180_text = r'$f_{\rm 180} \approx %d\,{\rm kHz}$' % int(np.around(f_180*1e-3))
         plt.annotate(f_180_text,
                      xy=(f_180, -180), xytext=(f_180*1.2, -100), arrowprops=dict(facecolor='black', shrink=0.05))
     
