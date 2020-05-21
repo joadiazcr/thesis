@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    f = np.linspace(1, 1e6, 1e6)  # Frequency from 1 to 10^6 Hz
+    f = np.linspace(1, 10**6, 10**6)  # Frequency from 1 to 10^6 Hz
     s = 1j*2.0*np.pi*f  # Laplace operator s=jw=j*2*pi*f
 
     wc = 104.3  # rad/s. bandwidth? where is this number coming from? from 16.6 Hz cavity bandwidth
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     elif args.f == 'pid':
         configurations = ['nominal', 'high', 'hobicat']
         for conf in configurations:
-            print ("%s Configuration") %conf
+            print ("%s Configuration", conf)
             with open("%s.json" % conf, "r") as read_file:
                 data = json.load(read_file)
             stable_gbw = data['stable_gbw']

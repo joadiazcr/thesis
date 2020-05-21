@@ -93,22 +93,16 @@ def ssa(v_last, v_in, ssa_bw, c, t, power_max):
 
 # PI Controller
 def PI(Kp, Ki, sp, x_in, sum_error, delta_t):
-    error = sp - x_in
-    sat = 1.278
-    #sat = 78.83
-    sum_error = sum_error + error * delta_t
-    state = sum_error * Ki
-    scale = np.abs(state)/sat
+    error = (sp - x_in)
+    sat = 78.83 # check where this saturation is comming from
+    sum_error = sum_error + error * delta_t * Ki
+    scale = np.abs(sum_error)/sat
     if scale > 1.0: 
-        state = state/scale 
-    u = state + Kp * error
+        sum_error = sum_error/scale 
+    u = sum_error + Kp * error
     scale = np.abs(u)/sat
     if scale > 1.0: 
         u = u/scale
-        sum_error = sum_error - error * delta_t 
-    
-    #print ("error =  %s, sum error = %s, u = %s") % (error, sum_error, u)
-    #u =  Kp * error + Ki * sum_error
     return u, error, sum_error
 
 # PI Controller
@@ -127,7 +121,6 @@ def PI_v(Kp, Ki, sp, v0, sum_init, delta_t, clip):
         if u <= 0.0:
                u = 0.0
                sum_init = sum_init - error *delta_t
-        print ("error =  %s, sum error = %s, u = %s") % (error, sum_init, u)
         return u, error, sum_init
 
 def phase():
@@ -143,13 +136,20 @@ def phase():
     plt.show()
 
 
+def gauss_noise(signal, mu, sigma):
+    signal = signal + np.random.normal(mu, sigma) + 1j * np.random.normal(mu, sigma)
+    return signal
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Cavity Simulation')
-    parser.add_argument('-f', type=str, choices=['stp', 'pi', 'ssa', 'phase'],
+    parser.add_argument('-f', type=str, choices=['stp', 'pi', 'ssa', 'phase', 'pi_unit', 'gn'],
                         help='Function: spt for Step Response,\
                         pi for PI controller,\
-                        ssa for SSA saturation curve\
-                        or phase phase shift')
+                        ssa for SSA saturation curve,\
+                        phase for phase shift,\
+                        gn for gauss noise\
+                        or pi_unit for PI controller unit test')
 
     args = parser.parse_args()
 
@@ -316,6 +316,38 @@ if __name__ == "__main__":
             control_zero = data['control_zero']
             pi.pid(f, s, wc, cavity, ssa_bw, stable_gbw, control_zero, conf, 1)
 
+    if args.f == 'pi_unit':
+        kp = 5.0
+        ki = 3.0
+        sp = 1.0
+        cav_in = 0.0
+        sum_init = 0.0
+
+        Tmax = 2.0
+        Tstep = 0.01
+        trang = np.arange(0.0, Tmax, Tstep)
+        nt = len(trang)  # Number of points
+        sp_step = int(nt*0.1)
+
+
+        drive = np.zeros(nt)
+        e =  np.zeros(nt)
+        ie = np.zeros(nt)
+
+        for i in range(nt):
+            if i > sp_step:
+                u, error, sum_init = PI(kp, ki, sp, cav_in, sum_init, Tstep)
+                drive[i] = u
+                e[i] = error
+                ie[i] = sum_init
+        
+        plt.plot(trang, drive, label='Drive')
+        plt.plot(trang, e, label='Error')
+        plt.plot(trang, ie, label='Integrator State')
+        plt.legend()
+        plt.show()
+
+
     if args.f == 'ssa':
         c = 5.0
         ssa_bw = 1e6
@@ -343,7 +375,7 @@ if __name__ == "__main__":
 
         plt.show()
 
-        cs = [1, 2.5, 5.0, 15.8, 39.8]
+        cs = [1, 2.0, 3.0, 4.0, 5.0]
         top_drive = 95  # %
         for c in cs:
             v_in = np.arange(0, 10, 1e-4)
@@ -365,5 +397,15 @@ if __name__ == "__main__":
 
     if args.f == 'phase':
         phase()
+
+    if args.f == 'gn':
+        mu = 0.0
+        sigma = 0.05
+        t = np.linspace(0, 5, 1000)
+        signal = np.sin(t)
+        for i in range(len(t)):
+            signal[i] = gauss_noise(signal[i], mu, sigma)
+        plt.plot(t, signal)
+        plt.show()
 
 # I want to reproduce bode plots and stability analysis for nominal, high, critical and optimal(Using rezas method) configurations

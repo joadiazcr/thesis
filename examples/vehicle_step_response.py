@@ -55,7 +55,7 @@ for i in range(nsteps-1):
 	if Kp == 0.0 and Ki == 0.0:
 		u = step[i]
 	else:
-	        u = Kp * error + Ki * sum_init
+	    u = Kp * error + Ki * sum_init
 	# clip inputs to -50% to 100%
 	if u >= 100.0:
 		u = 100.0
