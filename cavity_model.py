@@ -75,6 +75,17 @@ def ssa_lpf(y0, t, u, ssa_bw):
     return dydt
 
 
+# SSA low-pass filter complex model
+def ssa_lpf_complex(y0, t, u, ssa_bw):
+    y0_r = np.real(y0)
+    y0_i = np.imag(y0)
+    u_r = np.real(u)
+    u_i = np.imag(u)
+    dydt_r = -ssa_bw * y0_r + ssa_bw * u_r
+    dydt_i = -ssa_bw * y0_i + ssa_bw * u_i
+    dydt = dydt_r + dydt_i * 1.0j
+    return dydt
+
 # SSA saturation model
 def ssa_sat(c, v_in):
     v_out = v_in * ((1.0 + (np.abs(v_in)**c))**(-1.0/c))
@@ -85,7 +96,7 @@ def ssa_sat(c, v_in):
 def ssa(v_last, v_in, ssa_bw, c, t, power_max):
     v_in = v_in/np.sqrt(power_max)
     v_last = v_last/np.sqrt(power_max)
-    v_out = odeint(ssa_lpf, v_last, [0, t], (v_in, ssa_bw))  # Low-pass filter
+    v_out = odeintz(ssa_lpf_complex, v_last, [0, t], args=(v_in, ssa_bw))  # Low-pass filter
     v_out_sat = ssa_sat(c, v_out[-1])  # Saturation
     v_out_sat = v_out_sat * np.sqrt(power_max)
     return v_out_sat, v_out[-1] * np.sqrt(power_max)
@@ -139,6 +150,37 @@ def phase():
 def gauss_noise(signal, mu, sigma):
     signal = signal + np.random.normal(mu, sigma) + 1j * np.random.normal(mu, sigma)
     return signal
+
+def odeintz(func, z0, t, **kwargs):
+    """An odeint-like function for complex valued differential equations."""
+
+    # Disallow Jacobian-related arguments.
+    _unsupported_odeint_args = ['Dfun', 'col_deriv', 'ml', 'mu']
+    bad_args = [arg for arg in kwargs if arg in _unsupported_odeint_args]
+    if len(bad_args) > 0:
+        raise ValueError("The odeint argument %r is not supported by "
+                         "odeintz." % (bad_args[0],))
+
+    # Make sure z0 is a numpy array of type np.complex128.
+    z0 = np.array(z0, dtype=np.complex128, ndmin=1)
+
+    def realfunc(x, t, *args):
+        z = x.view(np.complex128)
+        dzdt = func(z, t, *args)
+        # func might return a python list, so convert its return
+        # value to an array with type np.complex128, and then return
+        # a np.float64 view of that array.
+        return np.asarray(dzdt, dtype=np.complex128).view(np.float64)
+
+    result = odeint(realfunc, z0.view(np.float64), t, **kwargs)
+
+    if kwargs.get('full_output', False):
+        z = result[0].view(np.complex128)
+        infodict = result[1]
+        return z, infodict
+    else:
+        z = result.view(np.complex128)
+    return z
 
 
 if __name__ == "__main__":
@@ -263,14 +305,16 @@ if __name__ == "__main__":
         Kg = 1.0
         Ib = 0.0
         Kg_s = 0.05
-        foffset = [100.0, 200.0]
+        foffset = [10.0, 100.0, 200.0]
         foffset_s = 0.2
 
         fig, ax1 = plt.subplots()
         fig2, ax3 = plt.subplots()
+        fig3, ax4 = plt.subplots()
         ax2 = ax1.twinx()
         lns = []
-        colors = ['c', 'm']
+        lns3 = []
+        colors = ['c', 'm', 'g']
 
         for idx, f in enumerate(foffset):
             args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, 0, Ib, f, Kg_s, foffset_s)
@@ -278,6 +322,10 @@ if __name__ == "__main__":
 
             # plot results for magnitude
             lns += ax1.plot(t, np.abs(v_pi_d), label='Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f+')')
+            # plot results for real and imaginary parts
+            lns3 += ax4.plot(t, np.real(v_pi_d), label='Cavity Field Real ('+r'$\Delta f_1$ = %s Hz' % f+')')
+            lns3 += ax4.plot(t, np.imag(v_pi_d), label='Cavity Field Imag ('+r'$\Delta f_1$ = %s Hz' % f+')')
+            # plot results for phase
             ax3.plot(t, np.unwrap(np.angle(v_pi_d)), label='Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f + ')')
 
             delta_f = np.ones(nt)*f
@@ -289,6 +337,7 @@ if __name__ == "__main__":
 
         lns += ax1.plot(t, drive_in*max(np.abs(v_pi_d)), label='Drive')
         labs = [l.get_label() for l in lns]
+        labs3 = [l.get_label() for l in lns3]
 
         ax3.set_title("Cavity Step Response: 1 pC Beam step")
         plt.title("Cavity Step Response: 1 pC Beam step")
@@ -300,6 +349,7 @@ if __name__ == "__main__":
         ax1.set_ylim(0, 6e5)
         ax2.set_ylim(0, foffset[1]*1.5)
         ax1.legend(lns, labs, loc=0)
+        ax4.legend(lns3, labs3, loc=0)
         plt.show()
 
     if args.f == 'pi':
