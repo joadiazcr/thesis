@@ -9,136 +9,188 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import cavity_model
 
 
-# Pi mode cavity parameters
-bw = 104  # where is this number coming from? Cavity bw 16Hz
-RoverQ_pi = 1036.0
-Qg_pi = 4.0 * 10**7
-Q0_pi = 2.7 * 10**10
-Qprobe_pi = 2.0 * 10**9
+def cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detuning, detuning_start, detuning_end):
+	# Pi mode cavity parameters
+	bw = 104  # where is this number coming from? Cavity bw 16Hz
+	RoverQ_pi = 1036.0
+	Qg_pi = 4.0 * 10**7
+	Q0_pi = 2.7 * 10**10
+	Qprobe_pi = 2.0 * 10**9
 
-# Cavity conditions
-foffset = 0.0
-foffset_s = 0.2 
-Kg = 1
-Ib = 0
+	# Cavity conditions
+	Kg = 1
+	Ib = 0
+	f_os = 0.0
+	noise_bw = 53000.0 * 2.0 * np.pi  # [Hz] Noise shaping filter. Not yet implemented
 
-noise_bw = 53000.0 * 2.0 * np.pi  # [Hz] Noise shaping filter. Not yet implemented
+	# SSA parameters
+	c = 5.0
+	ssa_bw = 1e6
+	power_max = 3.8e3
 
-# SSA parameters
-c = 5.0
-ssa_bw = 1e6
-power_max = 3.8e3
+	# PI controller - Nominal Configuration
+	stable_gbw = 20000
+	control_zero = 5000
+	Kp_a = stable_gbw*2*np.pi/bw
+	Ki_a = Kp_a*(2*np.pi*control_zero)
+	Kp_p = 1.0
+	Ki_p = 1.0
+	Kp = np.array([Kp_a, Kp_p])
+	Ki = np.array([Ki_a, Ki_p])
 
-# PI controller - Nominal Configuration
-stable_gbw = 20000
-control_zero = 5000
-Kp_a = stable_gbw*2*np.pi/bw
-Ki_a = Kp_a*(2*np.pi*control_zero)
-Kp_p = 1.0
-Ki_p = 1.0
-Kp = np.array([Kp_a, Kp_p])
-Ki = np.array([Ki_a, Ki_p])
+	# Simulation time variables
+	t_step = 1e-6
+	ts = np.arange(0, tf, t_step)
 
-# Simulation time variables
-tf = 0.05  # Total simulation time
-t_step = 1e-6
-ts = np.arange(0, tf, t_step)
+	# set point
+	fund_k_probe = 6.94e-7
+	fund_k_drive = 407136.3407999831
+	fund_k_beam = 40568527918.78173+0j
+	nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
+	sp_amp = nom_grad * fund_k_probe # 11.32
+	sp_phase = 0.0
+	sp = np.array([sp_amp, sp_phase])
 
-# set point
-fund_k_probe = 6.94e-7
-fund_k_drive = 407136.3407999831
-nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
-sp_amp = nom_grad * fund_k_probe # 11.32
-sp_phase = 0.0
-sp = np.array([sp_amp, sp_phase])
-
-# Initializing simulation variables
-sum_init = np.zeros(2)  # Integral(sumation) initial value
-error = np.zeros(2) # Control error initial value
-e = np.array([[0, 0]])  # Array to store and plot control error
-ie = np.array([[0, 0]])  # Array to store and plot integral of the eror
-v_s = np.array([[0]])  # Mode cavity voltage array
-z0 = np.zeros(3) # Initial conditions of cavity voltage (real, imaginary, phase)
-u = np.zeros(2) # Control signal initial value
-v_last = 0.0 # Last state of SSA output
-step = np.array([[0, 0]]) # Array to store and plot control signal
-
-for i in range(len(ts)-1):
-
-	vs_amp =  z0[0] + 1j*z0[1]
-	vs_amp = cavity_model.gauss_noise(vs_amp, 0.0, 0.000151/fund_k_probe) # apply gaussian noise to cavity voltage
-	v_s = np.append(v_s, (vs_amp)*np.exp(1j*z0[2]))
-
-	if (i * t_step) < foffset_s: 
-		f_os = 0.0
-	else:
-		f_os = foffset 
+	# Initializing simulation variables
+	sum_init = np.zeros(2,  dtype='complex')  # Integral(sumation) initial value
+	error = np.zeros(2, dtype='complex') # Control error initial value
+	e = np.array([[0, 0]])  # Array to store and plot control error
+	ie = np.array([[0, 0]])  # Array to store and plot integral of the eror
+	v_s = np.array([[0]], dtype='complex')  # Mode cavity voltage array
+	z0 = np.zeros(3) # Initial conditions of cavity voltage (real, imaginary, phase)
+	u = np.zeros(2, dtype='complex') # Control signal initial value
+	v_last = 0.0 # Last state of SSA output
+	step = np.array([[0, 0]]) # Array to store and plot control signal
 	
-	if Kp[0] == 0.0 and Ki[0] == 0.0:
-		u = Kg
-	else:
-		u[0], error[0], sum_init[0] = cavity_model.PI(Kp[0], Ki[0], sp[0], np.abs(v_s[i]) * fund_k_probe, sum_init[0], t_step)
-		u[1] = 0.0
-		e = np.append(e, [error], axis=0)
-		ie = np.append(ie, [sum_init], axis=0)
+	# beam current
+	beam_current = 100.0 * 10.0 ** (-6)
+	# feedforward
+	feed_forward = 0.99*np.sqrt(2)*beam_current*fund_k_beam/fund_k_drive + 0j
 
-	u[0], v_last = cavity_model.ssa(v_last, u[0], ssa_bw * 2.0 * np.pi, c, t_step, power_max)
+	for i in range(len(ts)-1):
 
-	if Kp[0] != 0.0 and Ki[0] != 0.0:
-		step = np.append(step, [u], axis=0)
+		vs_amp =  z0[0] + 1j*z0[1]
+		if llrf_noise == True:
+			vs_amp = cavity_model.gauss_noise(vs_amp, 0.0, 0.000151/fund_k_probe) # apply gaussian noise to cavity voltage
+		v_s = np.append(v_s, (vs_amp)*np.exp(1j*z0[2]))
 
-	real = u[0] * np.cos(u[1])
-	imag = u[0] * np.sin(u[1])
+		if Kp[0] == 0.0 and Ki[0] == 0.0:
+			u = Kg
+		else:
+			u[0], error[0], sum_init[0] = cavity_model.PI(Kp[0], Ki[0], sp[0], v_s[i] * fund_k_probe, sum_init[0], t_step)
+			u[1] = 0.0
+			e = np.append(e, [error], axis=0)
+			ie = np.append(ie, [sum_init], axis=0)
 
-	args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, real, imag, Ib, f_os)
-	z = odeint(cavity_model.model_complex, z0, [0, t_step], args=args_pi)
-	z0 = z[-1] # take the last value of z
+		u[0], v_last = cavity_model.ssa(v_last, u[0], ssa_bw * 2.0 * np.pi, c, t_step, power_max)
+
+		if beam == True:
+			if (i * t_step) > beam_start and (i * t_step) < beam_end: 
+				Ib = 100.0 * 10.0 ** (-12) / (10**(-6)) # 100 mA
+				if feedforward == True:
+					u[0] = u[0] + feed_forward
+			else:
+				Ib = 0.0
+
+		if detuning == True:
+			if (i * t_step) > detuning_start and (i * t_step) < detuning_end: 
+				f_os = 10.0 * np.sin(2.0 * np.pi * 100 * i * t_step)
+			else:
+				f_os = 0.0 
+
+		if Kp[0] != 0.0 and Ki[0] != 0.0:
+			step = np.append(step, [u], axis=0)
+
+		real = np.real(u[0])
+		imag = np.imag(u[0])
+
+		args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, real, imag, Ib, f_os)
+		z = odeint(cavity_model.model_complex, z0, [0, t_step], args=args_pi)
+		z0 = z[-1] # take the last value of z
+
+	return ts, v_s, nom_grad, step * fund_k_drive
 
 
-# Plot results
-plt.plot(ts, np.abs(v_s), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
-plt.plot(ts, nom_grad * np.ones(len(ts)), 'k--', linewidth=2, label='Set point')
-plt.plot(ts, step[:, 0] * fund_k_drive, 'r-', linewidth=2, label='U')
+### Beam Loading noise analysis ###
+tf = 0.04 # Total simulation time
+llrf_noise = False
+feedforward = True
+beam = True
+beam_start = 0.015
+beam_end = 0.03
+detuning = True
+detuning_start = 0.0
+detuning_end = 0.04
+t, cav_v, sp, fwd = cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+    
+# Plot results absolute  value
+plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+plt.plot(t, np.abs(fwd[:, 0]), 'r-', linewidth=2, label='U (Forward)')
 plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 plt.legend()
 plt.show()
 
-# plot results for Amplitude
-fig = plt.figure()
-fig.suptitle('Amplitude Control')
-plt.subplot(2, 2, 1)
-plt.plot(ts, np.abs(v_s), 'b-', linewidth=1, label='V')
-plt.plot(ts, nom_grad * np.ones(len(ts)), 'k--', linewidth=2, label='Set point')
+# Plot results real and imaginary values
+plt.plot(t, np.real(cav_v), 'b-', linewidth=2, label='Cavity Voltage Real(Probe)')
+plt.plot(t, np.imag(cav_v), 'b--', linewidth=2, label='Cavity Voltage Imag(Probe)')
+plt.plot(t, np.real(fwd[:, 0]), 'r-', linewidth=2, label='U Real (Forward)')
+plt.plot(t, np.imag(fwd[:, 0]), 'r--', linewidth=2, label='U Imag (Forward)')
 plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 plt.legend()
-plt.subplot(2, 2, 2)
-plt.plot(ts, step[:, 0], 'r-', linewidth=1, label='u')
-plt.ylabel('Control  acction')
-plt.legend()
-plt.subplot(2, 2, 3)
-plt.plot(ts, e[:, 0], 'b-', linewidth=3, label='Error (SP_PV)')
-plt.xlabel('Time [s]')
-plt.legend()
-#plt.show()
+plt.show()
 
-# plot results for phase
-fig = plt.figure()
-fig.suptitle('Phase Control')
-plt.subplot(2, 2, 1)
-plt.plot(ts, np.angle(v_s), 'b-', linewidth=3, label='V')
-plt.plot(ts, sp_phase * np.ones(len(ts)), 'k--', linewidth=2, label='Set point')
+exit()
+
+# Plot results
+plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+plt.plot(t, fwd[:, 0], 'r-', linewidth=2, label='U')
+plt.xlim(0.0195, 0.0225)
+plt.ylim(14e6, 23e6)
 plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 plt.legend()
-plt.subplot(2, 2, 2)
-plt.plot(ts, step[:, 1], 'r--', linewidth=3, label='u')
-plt.ylabel('Control  acction')
+plt.show()
+
+# Plot results
+plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+plt.plot(t, fwd[:, 0], 'r-', linewidth=2, label='U')
+plt.xlim(0.01998, 0.0203)
+plt.ylim(sp-10e3, sp+10e3)
+plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 plt.legend()
-plt.subplot(2, 2, 3)
-plt.plot(ts, e[:, 1], 'b-', linewidth=3, label='Error (SP_PV)')
-plt.xlabel('Time [s]')
+plt.show()
+
+### Plant perturbations - Microphonics ###
+tf = 0.04 # Total simulation time
+llrf_noise = False
+feedforward = False
+beam = True
+beam_start = 0.015
+beam_end = 0.03
+detuning = True
+detuning_start = 0.00
+detuning_end = 0.04
+t, cav_v, sp, fwd = cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+    
+# Plot results
+plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+plt.plot(t, fwd[:, 0], 'r-', linewidth=2, label='U')
+plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 plt.legend()
-plt.subplot(2, 2, 4)
-plt.plot(ts, ie[:, 1], 'b-', linewidth=3, label='Integral of error')
-plt.xlabel('Time [s]')
+plt.show()
+
+# Plot results
+plt.plot(t, np.real(cav_v), linewidth=2, label='Real Cavity Voltage (Probe)')
+plt.plot(t, np.imag(cav_v), linewidth=2, label='Imag Cavity Voltage (Probe)')
+plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+plt.plot(t, np.real(fwd[:, 0]), linewidth=2, label='U real')
+plt.plot(t, np.imag(fwd[:, 0]), linewidth=2, label='U Imag')
+
+plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 plt.legend()
-#plt.show()
+plt.show()
+
+exit()
