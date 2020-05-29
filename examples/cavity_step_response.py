@@ -9,7 +9,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import cavity_model
 
 
-def cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detuning, detuning_start, detuning_end):
+def meas_noise(psd, bw, grad, k):
+	rms = 1.5 * np.sqrt(0.5 * 10**(psd/10.0) * bw) * grad * k
+	return rms
+
+
+def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end):
 	# Pi mode cavity parameters
 	bw = 104  # where is this number coming from? Cavity bw 16Hz
 	RoverQ_pi = 1036.0
@@ -46,7 +51,6 @@ def cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detunin
 	fund_k_probe = 6.94e-7
 	fund_k_drive = 407136.3407999831
 	fund_k_beam = 40568527918.78173+0j
-	nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
 	sp_amp = nom_grad * fund_k_probe # 11.32
 	sp_phase = 0.0
 	sp = np.array([sp_amp, sp_phase])
@@ -66,13 +70,24 @@ def cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detunin
 	beam_current = 100.0 * 10.0 ** (-6)
 	# feedforward
 	feed_forward = 0.99*np.sqrt(2)*beam_current*fund_k_beam/fund_k_drive + 0j
+	# LLRF noise bw
+	bw_llrf_ns = 0.5 * 1.0/(t_step) / 10.0  # the "/10" should not be there, check that
 
 	for i in range(len(ts)-1):
 
 		vs_amp =  z0[0] + 1j*z0[1]
 		if llrf_noise == True:
-			vs_amp = cavity_model.gauss_noise(vs_amp, 0.0, 0.000151/fund_k_probe) # apply gaussian noise to cavity voltage
+			rms = meas_noise(psd, bw_llrf_ns, nom_grad, fund_k_probe)
+			vs_amp = cavity_model.gauss_noise(vs_amp, 0.0, rms/fund_k_probe) # apply gaussian noise to cavity voltage
 		v_s = np.append(v_s, (vs_amp)*np.exp(1j*z0[2]))
+
+		# Apply loop delay
+		# This loop delay is 1us, since my time step is 1us, i dont think this should be included
+
+		# Apply noise shaping low-pass filter
+		j = cavity_model.odeintz(cavity_model.noise_lpf_complex, v_s[i-1], [0, t_step], args=(v_s[i], 53000.0 * 2.0 * np.pi))  # Low-pass filter
+		v_s[i] = j[-1]
+
 
 		if Kp[0] == 0.0 and Ki[0] == 0.0:
 			u = Kg
@@ -110,6 +125,53 @@ def cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detunin
 
 	return ts, v_s, nom_grad, step * fund_k_drive
 
+### Measurement noise analysis ###
+tf = 0.02 # Total simulation time
+nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
+llrf_noise = True
+noise_psd = -149
+feedforward = True
+beam = False
+beam_start = 0.015
+beam_end = 0.03
+detuning = False
+detuning_start = 0.0
+detuning_end = 0.04
+t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, llrf_noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+    
+# Plot results absolute  value
+plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+plt.plot(t, np.abs(fwd[:, 0]), 'r-', linewidth=2, label='U (Forward)')
+plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
+plt.legend()
+plt.show()
+
+# Plot results absolute  value zoom in
+plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+plt.plot(t, nom_grad*np.ones(len(t))*(1+1e-4), label='Upper limit', linewidth=2, color='m')
+plt.plot(t, nom_grad*np.ones(len(t))*(1-1e-4), label='Lower limit', linewidth=2, color='y')
+plt.axhspan(nom_grad/1.00005, nom_grad*1.00005, color='blue', alpha=0.2)
+plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
+plt.xlim(0.010, 0.02)
+plt.ylim(nom_grad-10e3, nom_grad+10e3)
+plt.legend()
+plt.show()
+
+# Plot results of phase value zoom in
+plt.plot(t, np.angle(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+plt.plot(t, np.angle(sp) * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+plt.plot(t, 1e-2*np.ones(len(t)), label='Upper limit', linewidth=2, color='m')
+plt.plot(t, -1e-2*np.ones(len(t)), label='Lower limit', linewidth=2, color='y')
+plt.axhspan(-4e-3, 4e-3, color='blue', alpha=0.2)
+plt.ylabel("Phase [degrees]")
+plt.xlim(0.010, 0.02)
+plt.ylim(-6.25e-2, 6.25e-2)
+plt.legend()
+plt.show()
+
+exit()
 
 ### Beam Loading noise analysis ###
 tf = 0.04 # Total simulation time
@@ -188,7 +250,6 @@ plt.plot(t, np.imag(cav_v), linewidth=2, label='Imag Cavity Voltage (Probe)')
 plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
 plt.plot(t, np.real(fwd[:, 0]), linewidth=2, label='U real')
 plt.plot(t, np.imag(fwd[:, 0]), linewidth=2, label='U Imag')
-
 plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 plt.legend()
 plt.show()

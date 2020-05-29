@@ -75,6 +75,18 @@ def ssa_lpf(y0, t, u, ssa_bw):
     return dydt
 
 
+# SSA low-pass filter model
+def noise_lpf_complex(y0, t, u, noise_bw):
+    y0_r = np.real(y0)
+    y0_i = np.imag(y0)
+    u_r = np.real(u)
+    u_i = np.imag(u)
+    dydt_r = -noise_bw * y0_r + noise_bw * u_r
+    dydt_i = -noise_bw * y0_i + noise_bw * u_i
+    dydt = dydt_r + dydt_i * 1.0j
+    return dydt
+
+
 # SSA low-pass filter complex model
 def ssa_lpf_complex(y0, t, u, ssa_bw):
     y0_r = np.real(y0)
