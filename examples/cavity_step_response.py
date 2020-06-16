@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 import sys
 import os
+import argparse
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
@@ -10,8 +11,53 @@ import cavity_model
 
 
 def meas_noise(psd, bw, grad, k):
-	rms = 1.5 * np.sqrt(0.5 * 10**(psd/10.0) * bw) * grad * k
-	return rms
+    rms = 1.5 * np.sqrt(0.5 * 10**(psd/10.0) * bw) * grad * k
+    return rms
+
+
+def plot(t, cav_v, sp, fwd, show_fwd=False, show_lim=False,
+         x_lim=None, y_lim=None, plot_type='amp'):
+    if plot_type == 'amp':
+        plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+        plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
+        if show_fwd:
+            plt.plot(t, np.abs(fwd[:, 0]), 'r-', linewidth=2, label='U (Forward)')
+        plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
+
+    if plot_type == 'phase':
+        plt.plot(t, np.angle(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+        plt.plot(t, sp * np.zeros(len(t)), 'k--', linewidth=2, label='Set point')
+        if show_fwd:
+            plt.plot(t, np.angle(fwd[:, 0]), 'r-', linewidth=2, label='U (Forward)')
+        plt.ylabel('Phase [degress]')
+
+    if plot_type == 'cartesian':
+        plt.plot(t, np.real(cav_v), 'b-', linewidth=2, label='Cavity Voltage Real(Probe)')
+        plt.plot(t, np.imag(cav_v), 'b--', linewidth=2, label='Cavity Voltage Imag(Probe)')
+        if show_fwd:
+            plt.plot(t, np.real(fwd[:, 0]), 'r-', linewidth=2, label='U Real (Forward)')
+            plt.plot(t, np.imag(fwd[:, 0]), 'r--', linewidth=2, label='U Imag (Forward)')
+        plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
+    
+    if show_lim:
+        if plot_type == 'amp':
+            plt.plot(t, nom_grad*np.ones(len(t))*(1+1e-4), label='Upper limit', linewidth=2, color='m')
+            plt.plot(t, nom_grad*np.ones(len(t))*(1-1e-4), label='Lower limit', linewidth=2, color='y')
+            plt.axhspan(nom_grad/1.00005, nom_grad*1.00005, color='blue', alpha=0.2)
+        if plot_type == 'phase':
+            plt.plot(t, 1e-2*np.ones(len(t)), label='Upper limit', linewidth=2, color='m')
+            plt.plot(t, -1e-2*np.ones(len(t)), label='Lower limit', linewidth=2, color='y')
+            plt.axhspan(-4e-3, 4e-3, color='blue', alpha=0.2)
+
+    if x_lim:
+        plt.xlim(x_lim)
+
+    if y_lim:
+        plt.ylim(y_lim)
+
+    plt.xlabel('Time [ms]')
+    plt.legend()
+    plt.show()
 
 
 def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end):
@@ -71,7 +117,7 @@ def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam, beam_start, be
 	# feedforward
 	feed_forward = 0.99*np.sqrt(2)*beam_current*fund_k_beam/fund_k_drive + 0j
 	# LLRF noise bw
-	bw_llrf_ns = 0.5 * 1.0/(t_step) / 10.0  # the "/10" should not be there, check that
+	bw_llrf_ns = 0.5 * 1.0/(t_step) # / 10.0  # the "/10" should not be there, check that
 
 	for i in range(len(ts)-1):
 
@@ -125,133 +171,57 @@ def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam, beam_start, be
 
 	return ts, v_s, nom_grad, step * fund_k_drive
 
-### Measurement noise analysis ###
-tf = 0.02 # Total simulation time
-nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
-llrf_noise = True
-noise_psd = -149
-feedforward = True
-beam = False
-beam_start = 0.015
-beam_end = 0.03
-detuning = False
-detuning_start = 0.0
-detuning_end = 0.04
-t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, llrf_noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+
+if __name__ == "__main__":
+    des = 'Cavity step response simulation including models of the SSA and\
+	       the PI controller, and perturbations related with measurement\
+		   noise, beam loading and cavity detuning'
+    parser = argparse.ArgumentParser(description=des)
+    parser.add_argument('-b', "--beam", action="store_true",
+                        help='Include beam')
+    parser.add_argument('-d', "--detuning", action="store_true",
+                        help='Include detuning')
+    parser.add_argument('-n', "--noise", action="store_true",
+                        help='Include measurement noise')
+    parser.add_argument('-f', "--feed_forward", action="store_true",
+                        help='Feed forward ON')
     
-# Plot results absolute  value
-plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
-plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
-plt.plot(t, np.abs(fwd[:, 0]), 'r-', linewidth=2, label='U (Forward)')
-plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
-plt.legend()
-plt.show()
+    args = parser.parse_args()
 
-# Plot results absolute  value zoom in
-plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
-plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
-plt.plot(t, nom_grad*np.ones(len(t))*(1+1e-4), label='Upper limit', linewidth=2, color='m')
-plt.plot(t, nom_grad*np.ones(len(t))*(1-1e-4), label='Lower limit', linewidth=2, color='y')
-plt.axhspan(nom_grad/1.00005, nom_grad*1.00005, color='blue', alpha=0.2)
-plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
-plt.xlim(0.010, 0.02)
-plt.ylim(nom_grad-10e3, nom_grad+10e3)
-plt.legend()
-plt.show()
+    beam = args.beam
+    detuning = args.detuning
+    noise = args.noise
+    feedforward = args.feed_forward
 
-# Plot results of phase value zoom in
-plt.plot(t, np.angle(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
-plt.plot(t, np.angle(sp) * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
-plt.plot(t, 1e-2*np.ones(len(t)), label='Upper limit', linewidth=2, color='m')
-plt.plot(t, -1e-2*np.ones(len(t)), label='Lower limit', linewidth=2, color='y')
-plt.axhspan(-4e-3, 4e-3, color='blue', alpha=0.2)
-plt.ylabel("Phase [degrees]")
-plt.xlim(0.010, 0.02)
-plt.ylim(-6.25e-2, 6.25e-2)
-plt.legend()
-plt.show()
+    # Some settings for the simulation
+    tf = 0.02 # Total simulation time
+    nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
+    noise_psd = -149
+    beam_start = 0.015
+    beam_end = 0.017
+    detuning_start = 0.0
+    detuning_end = 0.03
 
-exit()
-
-### Beam Loading noise analysis ###
-tf = 0.04 # Total simulation time
-llrf_noise = False
-feedforward = True
-beam = True
-beam_start = 0.015
-beam_end = 0.03
-detuning = True
-detuning_start = 0.0
-detuning_end = 0.04
-t, cav_v, sp, fwd = cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+    if noise and not beam and not detuning:
+        t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        
+        plot(t, cav_v, sp, fwd, show_fwd=True)
+        plot(t, cav_v, sp, fwd, show_lim=True, x_lim=[0.012, 0.02], y_lim=[nom_grad-10e3, nom_grad+10e3])
+        plot(t, cav_v, sp, fwd, plot_type='phase', show_lim=True, x_lim=[0.012, 0.02], y_lim=[-6.25e-2, 6.25e-2])
     
-# Plot results absolute  value
-plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
-plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
-plt.plot(t, np.abs(fwd[:, 0]), 'r-', linewidth=2, label='U (Forward)')
-plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
-plt.legend()
-plt.show()
+    if beam and not noise and not detuning:
+        t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        plot(t, cav_v, sp, fwd, show_fwd=True)
+        plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.0145, 0.0175], y_lim=[14e6, 23e6])
+        plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.01495, 0.0153], y_lim=[sp-10e3, sp+10e3], show_lim=True)
+        plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.01495, 0.017], y_lim=[sp-10e3, sp+10e3], show_lim=True)
 
-# Plot results real and imaginary values
-plt.plot(t, np.real(cav_v), 'b-', linewidth=2, label='Cavity Voltage Real(Probe)')
-plt.plot(t, np.imag(cav_v), 'b--', linewidth=2, label='Cavity Voltage Imag(Probe)')
-plt.plot(t, np.real(fwd[:, 0]), 'r-', linewidth=2, label='U Real (Forward)')
-plt.plot(t, np.imag(fwd[:, 0]), 'r--', linewidth=2, label='U Imag (Forward)')
-plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
-plt.legend()
-plt.show()
-
-exit()
-
-# Plot results
-plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
-plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
-plt.plot(t, fwd[:, 0], 'r-', linewidth=2, label='U')
-plt.xlim(0.0195, 0.0225)
-plt.ylim(14e6, 23e6)
-plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
-plt.legend()
-plt.show()
-
-# Plot results
-plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
-plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
-plt.plot(t, fwd[:, 0], 'r-', linewidth=2, label='U')
-plt.xlim(0.01998, 0.0203)
-plt.ylim(sp-10e3, sp+10e3)
-plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
-plt.legend()
-plt.show()
-
-### Plant perturbations - Microphonics ###
-tf = 0.04 # Total simulation time
-llrf_noise = False
-feedforward = False
-beam = True
-beam_start = 0.015
-beam_end = 0.03
-detuning = True
-detuning_start = 0.00
-detuning_end = 0.04
-t, cav_v, sp, fwd = cavity_step(tf, feedforward, llrf_noise, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
-    
-# Plot results
-plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
-plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
-plt.plot(t, fwd[:, 0], 'r-', linewidth=2, label='U')
-plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
-plt.legend()
-plt.show()
-
-# Plot results
-plt.plot(t, np.real(cav_v), linewidth=2, label='Real Cavity Voltage (Probe)')
-plt.plot(t, np.imag(cav_v), linewidth=2, label='Imag Cavity Voltage (Probe)')
-plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
-plt.plot(t, np.real(fwd[:, 0]), linewidth=2, label='U real')
-plt.plot(t, np.imag(fwd[:, 0]), linewidth=2, label='U Imag')
-plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
-plt.legend()
-plt.show()
-
-exit()
+    if detuning:
+        tf = 0.03 # Total simulation time
+        beam_start = 0.015
+        beam_end = 0.025
+        t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        plot(t, cav_v, sp, fwd, show_fwd=True)
+        plot(t, cav_v, sp, fwd, show_fwd=True, plot_type='cartesian', x_lim=[0.01495, 0.025])
+        plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.01495, 0.025], y_lim=[sp-10e3, sp+10e3], show_lim=True)
+        plot(t, cav_v, sp, fwd, plot_type='phase', show_lim=True, x_lim=[0.01495, 0.025], y_lim=[-6.25e-2, 6.25e-2])
