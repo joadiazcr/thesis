@@ -203,8 +203,8 @@ if __name__ == "__main__":
     detuning_end = 0.03
 
     if noise and not beam and not detuning:
+        tf = 0.03 # Total simulation time
         t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
-        
         plot(t, cav_v, sp, fwd, show_fwd=True)
         plot(t, cav_v, sp, fwd, show_lim=True, x_lim=[0.012, 0.02], y_lim=[nom_grad-10e3, nom_grad+10e3])
         plot(t, cav_v, sp, fwd, plot_type='phase', show_lim=True, x_lim=[0.012, 0.02], y_lim=[-6.25e-2, 6.25e-2])
@@ -225,3 +225,8 @@ if __name__ == "__main__":
         plot(t, cav_v, sp, fwd, show_fwd=True, plot_type='cartesian', x_lim=[0.01495, 0.025])
         plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.01495, 0.025], y_lim=[sp-10e3, sp+10e3], show_lim=True)
         plot(t, cav_v, sp, fwd, plot_type='phase', show_lim=True, x_lim=[0.01495, 0.025], y_lim=[-6.25e-2, 6.25e-2])
+
+    if not beam and not noise and not detuning:
+        tf = 0.03 # Total simulation time
+        t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        plot(t, cav_v, sp, fwd, show_fwd=True)
