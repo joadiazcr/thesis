@@ -48,27 +48,27 @@ ie = np.zeros(nsteps) # integral of the error initialization
 
 # simulate with ODEINT
 for i in range(nsteps-1):
-        error = sp - v0
-        e[i+1] = error
-        sum_init = sum_init + error * delta_t
-	
-	if Kp == 0.0 and Ki == 0.0:
-		u = step[i]
-	else:
-	    u = Kp * error + Ki * sum_init
-	# clip inputs to -50% to 100%
-	if u >= 100.0:
-		u = 100.0
-		sum_init = sum_init - error *delta_t
+    error = sp - v0
+    e[i+1] = error
+    sum_init = sum_init + error * delta_t
+
+    if Kp == 0.0 and Ki == 0.0:
+        u = step[i]
+    else:
+        u = Kp * error + Ki * sum_init
+    # clip inputs to -50% to 100%
+    if u >= 100.0:
+        u = 100.0
+        sum_init = sum_init - error *delta_t
         if u <= -50.0:
                 u = -50.0
                 sum_init = sum_init - error *delta_t
-	ie[i+1] = sum_init
-	if Kp != 0.0 and Ki != 0.0:
-		step[i+1] = u
-	v = odeint(vehicle, v0, [0, delta_t], args = (u, load))
-	v0 = v[-1] # take the last value of v
-	vs[i+1] = v0
+    ie[i+1] = sum_init
+    if Kp != 0.0 and Ki != 0.0:
+        step[i+1] = u
+    v = odeint(vehicle, v0, [0, delta_t], args = (u, load))
+    v0 = v[-1] # take the last value of v
+    vs[i+1] = v0
 
 # plot results
 plt.figure()

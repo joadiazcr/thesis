@@ -15,7 +15,7 @@ def meas_noise(psd, bw, grad, k):
     return rms
 
 
-def plot(t, cav_v, sp, fwd, show_fwd=False, show_lim=False,
+def plot(t, cav_v, sp, fwd, nom_grad, show_fwd=False, show_lim=False,
          x_lim=None, y_lim=None, plot_type='amp'):
     if plot_type == 'amp':
         plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
@@ -60,7 +60,9 @@ def plot(t, cav_v, sp, fwd, show_fwd=False, show_lim=False,
     plt.show()
 
 
-def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end):
+def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam,
+	            beam_start, beam_end, detuning, detuning_start,
+				detuning_end, stable_gbw=20000, control_zero=5000):
 	# Pi mode cavity parameters
 	bw = 104  # where is this number coming from? Cavity bw 16Hz
 	RoverQ_pi = 1036.0
@@ -80,8 +82,6 @@ def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam, beam_start, be
 	power_max = 3.8e3
 
 	# PI controller - Nominal Configuration
-	stable_gbw = 20000
-	control_zero = 5000
 	Kp_a = stable_gbw*2*np.pi/bw
 	Ki_a = Kp_a*(2*np.pi*control_zero)
 	Kp_p = 1.0
@@ -147,7 +147,7 @@ def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam, beam_start, be
 
 		if beam == True:
 			if (i * t_step) > beam_start and (i * t_step) < beam_end: 
-				Ib = 100.0 * 10.0 ** (-12) / (10**(-6)) # 100 mA
+				Ib = 100.0 * 10.0 ** (-12) / (10**(-6)) # 100 mA, uA?
 				if feedforward == True:
 					u[0] = u[0] + feed_forward
 			else:
@@ -169,7 +169,7 @@ def cavity_step(tf, nom_grad, feedforward, llrf_noise, psd, beam, beam_start, be
 		z = odeint(cavity_model.model_complex, z0, [0, t_step], args=args_pi)
 		z0 = z[-1] # take the last value of z
 
-	return ts, v_s, nom_grad, step * fund_k_drive
+	return ts, v_s, nom_grad, step * fund_k_drive, Kp_a, Ki_a, e, ie
 
 
 if __name__ == "__main__":
@@ -204,29 +204,31 @@ if __name__ == "__main__":
 
     if noise and not beam and not detuning:
         tf = 0.03 # Total simulation time
-        t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
-        plot(t, cav_v, sp, fwd, show_fwd=True)
-        plot(t, cav_v, sp, fwd, show_lim=True, x_lim=[0.012, 0.02], y_lim=[nom_grad-10e3, nom_grad+10e3])
-        plot(t, cav_v, sp, fwd, plot_type='phase', show_lim=True, x_lim=[0.012, 0.02], y_lim=[-6.25e-2, 6.25e-2])
+        t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True)
+        plot(t, cav_v, sp, fwd, nom_grad, show_lim=True, x_lim=[0.012, 0.02], y_lim=[nom_grad-10e3, nom_grad+10e3])
+        plot(t, cav_v, sp, fwd, nom_grad, plot_type='phase', show_lim=True, x_lim=[0.012, 0.02], y_lim=[-6.25e-2, 6.25e-2])
     
     if beam and not noise and not detuning:
-        t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
-        plot(t, cav_v, sp, fwd, show_fwd=True)
-        plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.0145, 0.0175], y_lim=[14e6, 23e6])
-        plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.01495, 0.0153], y_lim=[sp-10e3, sp+10e3], show_lim=True)
-        plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.01495, 0.017], y_lim=[sp-10e3, sp+10e3], show_lim=True)
+        t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True)
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[0.0145, 0.0175], y_lim=[14e6, 23e6])
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[0.01495, 0.0153], y_lim=[sp-10e3, sp+10e3], show_lim=True)
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[0.01495, 0.017], y_lim=[sp-10e3, sp+10e3], show_lim=True)
 
     if detuning:
         tf = 0.03 # Total simulation time
         beam_start = 0.015
         beam_end = 0.025
-        t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
-        plot(t, cav_v, sp, fwd, show_fwd=True)
-        plot(t, cav_v, sp, fwd, show_fwd=True, plot_type='cartesian', x_lim=[0.01495, 0.025])
-        plot(t, cav_v, sp, fwd, show_fwd=True, x_lim=[0.01495, 0.025], y_lim=[sp-10e3, sp+10e3], show_lim=True)
-        plot(t, cav_v, sp, fwd, plot_type='phase', show_lim=True, x_lim=[0.01495, 0.025], y_lim=[-6.25e-2, 6.25e-2])
+        t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True)
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, plot_type='cartesian', x_lim=[0.01495, 0.025])
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[0.01495, 0.025], y_lim=[sp-10e3, sp+10e3], show_lim=True)
+        plot(t, cav_v, sp, fwd, nom_grad, plot_type='phase', show_lim=True, x_lim=[0.01495, 0.025], y_lim=[-6.25e-2, 6.25e-2])
 
     if not beam and not noise and not detuning:
         tf = 0.03 # Total simulation time
-        t, cav_v, sp, fwd = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
-        plot(t, cav_v, sp, fwd, show_fwd=True)
+        t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True)
+        plot(t, cav_v, sp, fwd, nom_grad, show_lim=True, x_lim=[0.01, 0.012], y_lim=[nom_grad-20e3, nom_grad+20e3])
+

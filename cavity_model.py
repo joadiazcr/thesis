@@ -126,7 +126,7 @@ def PI(Kp, Ki, sp, x_in, sum_error, delta_t):
     scale = np.abs(u)/sat
     if scale > 1.0: 
         u = u/scale
-    return u, error, sum_error
+    return u, error, np.abs(sum_error)
 
 # PI Controller
 def PI_v(Kp, Ki, sp, v0, sum_init, delta_t, clip):
