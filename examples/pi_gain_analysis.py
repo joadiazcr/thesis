@@ -88,7 +88,7 @@ if __name__ == "__main__":
     ssa_limit = 0.04 * fund_k_drive * np.sqrt(ssa_power)
    
     # Some settings for the simulation
-    tf = 0.03 # Total simulation time
+    tf = 0.1 # Total simulation time
     nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
     beam = False
     detuning = True
