@@ -61,6 +61,6 @@ if __name__ == "__main__":
     else:
         print('\nNelder-Mead')
         print("0-dB crossing\t\trmse\t\tExec Time")
-        res = minimize(cavity_step_rmse, s_gbw, method='Nelder-Mead', 
+        res = minimize(cavity_step_rmse, s_gbw, method='SLSQP', 
                        tol=1e-1, options={'disp': True, 'maxiter': 1})
         print('Solution =', res.x)
