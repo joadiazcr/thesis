@@ -90,15 +90,19 @@ if __name__ == "__main__":
     parser.add_argument('-t', "--time", dest="time", default=0.02, type=float,
                         help='Cavity simulation time')
 
-
     args = parser.parse_args()
+
+    start_time = datetime.now()
 
     if args.obj:
         print('Optimizing function obj...')
 
         # Create log file
-        logfile_name = 'test_noisyoptopt_results'
+        logfile_name = start_time.strftime('test_noisyopt_results' + '%Y%m%d_%H%M%S')
+        print("Log file: %s" % logfile_name)
         logfile = open(logfile_name, "w")
+        log(logfile, 'Optimization method: noisyopt', stdout=False)
+        log(logfile, "0-dB crossing\trmse\t\tExec Time")
 
         x = np.linspace(-1, 1, 100)
         y = []
@@ -108,9 +112,9 @@ if __name__ == "__main__":
         bnds = [(-1, 1)]
         x0 = [1.0]
         #res = minimizeCompass(obj, x0=[1.0], deltatol=0.1, paired=False, funcNinit=10, alpha=0.01)
-        bnds = [(20000, 70000)]
-        x0 = [20000]
-        res = minimizeSPSA(cavity_step_rmse, x0, paired=False, niter=10, bounds=bnds, disp=False)
+        bnds = [(10000, 70000)]
+        x0 = [10000]
+        res = minimizeCompass(cavity_step_rmse, x0, bounds=bnds, paired=False, funcNinit=3, deltatol=20, deltainit=60000)
 
         # Load Func evaluations
         logfile = open(logfile_name, "r")
