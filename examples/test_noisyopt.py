@@ -34,17 +34,18 @@ class Opt_Results:
         plt.show()
 
 
-def obj(x, save=True):
-    y = (x**2).sum() + 0.1*np.random.randn()
+def quad_func(x, *args):
+    y = (x**2).sum() + 0.2*np.random.randn()
+    save = args[0]
     if save:
         log(logfile, str(x[0]) + '\t' + str(y), stdout=True)
     return y
 
 
-def cavity_step_rmse(s_gbw):
+def cavity_step_rmse(s_gbw, *args):
     start = datetime.now()
     # Some settings for the simulation
-    tf = args.time # Total simulation time in seconds
+    tf = args[0] # Total simulation time in seconds
     nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
     beam = False
     detuning = True
@@ -74,7 +75,6 @@ def cavity_step_rmse(s_gbw):
     return rms_err
 
 
-
 def log(logfile, line, stdout=False):
     logfile.write(line+'\n')
     if stdout:
@@ -82,19 +82,60 @@ def log(logfile, line, stdout=False):
         sys.stdout.flush()
 
 
+def load_data(file):
+    print('Loading data from %s' % file)
+    gain_s = []
+    rmse_s = []
+    opt_gain = []
+    method = ''
+    time_s = []
+    results = open(file, 'r')
+    for line in results:
+        if 'Optimization method' in line:
+            method = line.split(':')[1]
+            print('The optimization method is ', method)
+        elif 'Solution' in line:
+            opt_gain = line.split('[')[1]
+            opt_gain = opt_gain.split(']')[0]
+        elif 'Solution' not in line and  '0-dB' not in line\
+                and '=' not in line and 'rank' not in line\
+                and 'Results' not in line:
+            gain_s.append(float(line.split()[0]))
+            rmse_s.append(float(line.split()[1]))
+            try:
+                time_s.append(line.split()[2])
+            except:
+                pass
+
+    return method, gain_s, rmse_s, time_s
+
+
 if __name__ == "__main__":
     des = 'script to test optimization algorithms'
     parser = argparse.ArgumentParser(description=des)
-    parser.add_argument('-obj', "--obj", action="store_true",
-                        help='Test function obj')
+    parser.add_argument('-f', "--func", choices=['quad_func','cavity_step_rmse'],
+                        help='Function to optimize: quad_func or cavity_step_rmse')
     parser.add_argument('-t', "--time", dest="time", default=0.02, type=float,
                         help='Cavity simulation time')
+    parser.add_argument('-fni', "--fni", dest="funcNinit", default=3, type=int,
+                        help='Parameter funcNinit for minimizeCompass function')
+    parser.add_argument('-di', "--di", dest="deltainit", default=60000, type=int,
+                        help='Parameter deltainit for minimizeCompass function')
+    parser.add_argument('-feps', "--feps", dest="feps", default=30, type=float,
+                        help='Parameter feps for minimizeCompass function')
 
     args = parser.parse_args()
 
     start_time = datetime.now()
 
-    if args.obj:
+    funcNinit = args.funcNinit
+    deltainit = args.deltainit
+    feps = args.feps
+
+    x = []
+    y = []
+
+    if args.func:
         print('Optimizing function obj...')
 
         # Create log file
@@ -104,25 +145,24 @@ if __name__ == "__main__":
         log(logfile, 'Optimization method: noisyopt', stdout=False)
         log(logfile, "0-dB crossing\trmse\t\tExec Time")
 
-        x = np.linspace(-1, 1, 100)
-        y = []
-        for i in x:
-            y.append(obj(i, False))
+        if args.func == 'quad_func':
+            bnds = [(-1, 1)]
+            x0 = [1.0]
+            save = True
+            res = minimizeCompass(quad_func, x0, args=(save, save), bounds = bnds, deltainit=deltainit, funcNinit=funcNinit, paired=False, feps=feps, disp=False)
 
-        bnds = [(-1, 1)]
-        x0 = [1.0]
-        #res = minimizeCompass(obj, x0=[1.0], deltatol=0.1, paired=False, funcNinit=10, alpha=0.01)
-        bnds = [(10000, 70000)]
-        x0 = [10000]
-        res = minimizeCompass(cavity_step_rmse, x0, bounds=bnds, paired=False, funcNinit=3, deltatol=20, deltainit=60000)
+            x = np.linspace(-1, 1, 100)
+            for i in x:
+                y.append(quad_func(i, False))
 
-        # Load Func evaluations
-        logfile = open(logfile_name, "r")
-        x_s = []
-        y_s = []
-        for line in logfile:
-            x_s.append(float(line.split()[0]))
-            y_s.append(float(line.split()[1]))
+        elif args.func == 'cavity_step_rmse':
+            bnds = [(10000, 70000)]
+            x0 = [10000]
+            res = minimizeCompass(cavity_step_rmse, x0, args=(args.time, args.time), bounds=bnds, paired=False, funcNinit=funcNinit, deltainit=deltainit, feps=feps, disp=False)
+
+        log(logfile, str(res.items()), stdout=True)
+        logfile.close()
+        method, x_s, y_s, tme_s = load_data(logfile_name)
 
         min_scalar_results = Opt_Results(res, 'Noisyopt')
         min_scalar_results.plot_opt(x_s, y_s, x, y)
