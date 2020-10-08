@@ -1,19 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize, rosen, rosen_der
 from datetime import datetime
-import time
 import argparse
 import sys
 import pickle
 from datetime import timedelta
 import re
-
-import numpy as np
-from noisyopt import minimizeCompass, minimizeSPSA
-
+from noisyopt import minimizeCompass
 import os
-
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 from cavity_step_response import cavity_step
 from pi_gain_analysis import error, rmse
@@ -30,7 +24,6 @@ class Opt_Results:
         self.total_time = 0
         self.average_time = 0
 
-
     def process_time(self):
         if len(self.time_s) != 0:
             timedelta_s = []
@@ -46,22 +39,25 @@ class Opt_Results:
         else:
             print('No time data available')
 
-
     def plot_opt(self, x_s, y_s, x, y):
         plt.title(self.method + '\n' + self.logfile)
         plt.plot(x, y, '--', label='Function')
-        plt.plot(x_s, y_s, 'o', label='Function evaluations = ' + str(len(x_s)))
-        plt.plot(self.opt_x, self.opt_y, '*', label='Optimal (' + str(self.opt_x[0]) + ',' + str(self.opt_y) + ')')
-        plt.text(0,0.6,'test', ha='center')
+        lbl = 'Function evaluations = ' + str(len(x_s))
+        plt.plot(x_s, y_s, 'o', label=lbl)
+        lbl = 'Optimal (' + str(self.opt_x[0]) + ',' + str(self.opt_y) + ')'
+        plt.plot(self.opt_x, self.opt_y, '*', label=lbl)
+        plt.text(0, 0.6, 'test', ha='center')
         plt.legend()
         plt.show()
 
 
 def parse_time(s):
     if 'day' in s:
-        m = re.match(r'(?P<days>[-\d]+) day[s]*, (?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
+        exp = r'(?P<days>[-\d]+) day[s]*, (?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)'
+        m = re.match(exp, s)
     else:
-        m = re.match(r'(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
+        exp = r'(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)'
+        m = re.match(exp, s)
     return {key: float(val) for key, val in m.groupdict().items()}
 
 
@@ -72,15 +68,16 @@ def quad_func(x, *args):
     exec_time = end - start
     save = args[0]
     if save:
-        log(logfile, str(x[0]) + '\t' + str(y) + '\t' + str(exec_time), stdout=True)
+        log(logfile, str(x[0]) + '\t' + str(y) + '\t' + str(exec_time),
+            stdout=True)
     return y
 
 
 def cavity_step_rmse(s_gbw, *args):
     start = datetime.now()
     # Some settings for the simulation
-    tf = args[0] # Total simulation time in seconds
-    nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
+    tf = args[0]  # Total simulation time in seconds
+    nom_grad = 1.6301e7  # V/m. Nominal gradient of LCLS-II cavity
     beam = False
     detuning = True
     noise = True
@@ -92,16 +89,17 @@ def cavity_step_rmse(s_gbw, *args):
     detuning_end = tf
 
     # 1. Simulate cavity response with given gains
-    t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd,\
-                                                             beam, beam_start, beam_end, detuning,\
-                                                             detuning_start, detuning_end, stable_gbw=s_gbw)
+    t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad,
+                                           feedforward, noise, noise_psd,
+                                           beam, beam_start, beam_end, detuning,
+                                           detuning_start, detuning_end, stable_gbw=s_gbw)
 
     # 2. Calculate error
     err = error(sp, np.abs(cav_v))
 
     # 3. Calculate RMSE
     rms_err = rmse(err)
-    #rms_err = 100.0 + np.random.rand(1,1)
+
     end = datetime.now()
     exec_time = end - start
     log(logfile, '{:.6f}'.format(s_gbw[0]) + '\t{:.6f}'.format(rms_err) + '\t' + str(exec_time),
@@ -130,7 +128,7 @@ def load_data(file):
         elif 'Solution' in line:
             opt_gain = line.split('[')[1]
             opt_gain = opt_gain.split(']')[0]
-        elif 'Solution' not in line and  '0-dB' not in line\
+        elif 'Solution' not in line and '0-dB' not in line\
                 and '=' not in line and 'rank' not in line\
                 and 'Results' not in line and 'dict_items'\
                 not in line:
@@ -139,7 +137,7 @@ def load_data(file):
             try:
                 time_s.append(line.split()[2])
             except:
-                pass
+                print('No time infor available')
 
     return method, gain_s, rmse_s, time_s
 
@@ -147,15 +145,21 @@ def load_data(file):
 if __name__ == "__main__":
     des = 'script to test optimization algorithms'
     parser = argparse.ArgumentParser(description=des)
-    parser.add_argument('-f', "--func", choices=['quad_func','cavity_step_rmse'],
-                        help='Function to optimize: quad_func or cavity_step_rmse')
+    parser.add_argument('-f', "--func",
+                        choices=['quad_func', 'cavity_step_rmse'],
+                        help='Function to optimize: quad_func or\
+                              cavity_step_rmse')
     parser.add_argument('-t', "--time", dest="time", default=0.02, type=float,
                         help='Cavity simulation time')
     parser.add_argument('-fni', "--fni", dest="funcNinit", default=3, type=int,
-                        help='Parameter funcNinit for minimizeCompass function')
-    parser.add_argument('-di', "--di", dest="deltainit", default=60000, type=int,
-                        help='Parameter deltainit for minimizeCompass function')
-    parser.add_argument('-feps', "--feps", dest="feps", default=30, type=float,
+                        help='Parameter funcNinit for\
+                              minimizeCompass function')
+    parser.add_argument('-di', "--di", dest="deltainit", default=60000,
+                        type=int,
+                        help='Parameter deltainit for\
+                              minimizeCompass function')
+    parser.add_argument('-feps', "--feps", dest="feps", default=30,
+                        type=float,
                         help='Parameter feps for minimizeCompass function')
     parser.add_argument('-p', "--plot", dest="plot", default=None, type=str,
                         help='File name with data to plot')
@@ -185,7 +189,10 @@ if __name__ == "__main__":
             bnds = [(-1, 1)]
             x0 = [1.0]
             save = True
-            res = minimizeCompass(quad_func, x0, args=(save, save), bounds = bnds, deltainit=deltainit, funcNinit=funcNinit, paired=False, feps=feps, disp=False)
+            res = minimizeCompass(quad_func, x0, args=(save, save),
+                                  bounds=bnds, deltainit=deltainit,
+                                  funcNinit=funcNinit, paired=False,
+                                  feps=feps, disp=False)
 
             x = np.linspace(-1, 1, 100)
             for i in x:
@@ -194,18 +201,21 @@ if __name__ == "__main__":
         elif args.func == 'cavity_step_rmse':
             bnds = [(10000, 70000)]
             x0 = [10000]
-            res = minimizeCompass(cavity_step_rmse, x0, args=(args.time, args.time), bounds=bnds, paired=False, funcNinit=funcNinit, deltainit=deltainit, feps=feps, disp=False)
+            res = minimizeCompass(cavity_step_rmse, x0,
+                                  args=(args.time, args.time),
+                                  bounds=bnds, paired=False,
+                                  funcNinit=funcNinit,
+                                  deltainit=deltainit, feps=feps, disp=False)
 
         pickle_filename = logfile_name + '.p'
-        pickle.dump(res, open( pickle_filename, "wb"))
+        pickle.dump(res, open(pickle_filename, "wb"))
         log(logfile, str(res.items()), stdout=True)
         logfile.close()
 
-
     if args.plot:
         logfile_name = args.plot
-        
-    res = pickle.load(open(logfile_name + '.p',"rb"))
+
+    res = pickle.load(open(logfile_name + '.p', "rb"))
     method, x_s, y_s, time_s = load_data(logfile_name)
 
     min_scalar_results = Opt_Results(res, 'Noisyopt', logfile_name, time_s)
