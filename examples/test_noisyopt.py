@@ -5,6 +5,9 @@ from datetime import datetime
 import time
 import argparse
 import sys
+import pickle
+from datetime import timedelta
+import re
 
 import numpy as np
 from noisyopt import minimizeCompass, minimizeSPSA
@@ -17,28 +20,59 @@ from pi_gain_analysis import error, rmse
 
 
 class Opt_Results:
-    def __init__(self, res, method):
+    def __init__(self, res, method, logfile, time_s):
         self.method = method
         self.res = res
         self.opt_y = self.res.fun
         self.opt_x = self.res.x
-        print(self.res.items())
+        self.logfile = logfile
+        self.time_s = time_s
+        self.total_time = 0
+        self.average_time = 0
+
+
+    def process_time(self):
+        if len(self.time_s) != 0:
+            timedelta_s = []
+            self.total_time = timedelta()
+            for time in self.time_s:
+                temp_time = parse_time(time)
+                temp_time = timedelta(**temp_time)
+                timedelta_s.append(temp_time)
+                self.total_time += temp_time
+            self.average_time = self.total_time / len(self.time_s)
+            print('Average time per function evaluation:', self.average_time)
+            print('Total execution time: ', self.total_time)
+        else:
+            print('No time data available')
 
 
     def plot_opt(self, x_s, y_s, x, y):
-        plt.title(self.method)
+        plt.title(self.method + '\n' + self.logfile)
         plt.plot(x, y, '--', label='Function')
-        plt.plot(x_s, y_s, 'o', label='Function evaluations [' + str(len(x_s)) + ']')
-        plt.plot(self.opt_x, self.opt_y, '*', label='Optimal (' + str(self.opt_x) + ',' + str(self.opt_y) + ')')
+        plt.plot(x_s, y_s, 'o', label='Function evaluations = ' + str(len(x_s)))
+        plt.plot(self.opt_x, self.opt_y, '*', label='Optimal (' + str(self.opt_x[0]) + ',' + str(self.opt_y) + ')')
+        plt.text(0,0.6,'test', ha='center')
         plt.legend()
         plt.show()
 
 
+def parse_time(s):
+    if 'day' in s:
+        m = re.match(r'(?P<days>[-\d]+) day[s]*, (?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
+    else:
+        m = re.match(r'(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
+    return {key: float(val) for key, val in m.groupdict().items()}
+
+
 def quad_func(x, *args):
+    start = datetime.now()
     y = (x**2).sum() + 0.2*np.random.randn()
+    end = datetime.now()
+    exec_time = end - start
     save = args[0]
     if save:
-        log(logfile, str(x[0]) + '\t' + str(y), stdout=True)
+        log(logfile, str(x[0]) + '\t' + str(y) + '\t' + str(exec_time), stdout=True)
     return y
 
 
@@ -93,13 +127,13 @@ def load_data(file):
     for line in results:
         if 'Optimization method' in line:
             method = line.split(':')[1]
-            print('The optimization method is ', method)
         elif 'Solution' in line:
             opt_gain = line.split('[')[1]
             opt_gain = opt_gain.split(']')[0]
         elif 'Solution' not in line and  '0-dB' not in line\
                 and '=' not in line and 'rank' not in line\
-                and 'Results' not in line:
+                and 'Results' not in line and 'dict_items'\
+                not in line:
             gain_s.append(float(line.split()[0]))
             rmse_s.append(float(line.split()[1]))
             try:
@@ -123,6 +157,8 @@ if __name__ == "__main__":
                         help='Parameter deltainit for minimizeCompass function')
     parser.add_argument('-feps', "--feps", dest="feps", default=30, type=float,
                         help='Parameter feps for minimizeCompass function')
+    parser.add_argument('-p', "--plot", dest="plot", default=None, type=str,
+                        help='File name with data to plot')
 
     args = parser.parse_args()
 
@@ -136,7 +172,7 @@ if __name__ == "__main__":
     y = []
 
     if args.func:
-        print('Optimizing function obj...')
+        print('Optimizing function %s' % args.func)
 
         # Create log file
         logfile_name = start_time.strftime('test_noisyopt_results' + '%Y%m%d_%H%M%S')
@@ -160,9 +196,18 @@ if __name__ == "__main__":
             x0 = [10000]
             res = minimizeCompass(cavity_step_rmse, x0, args=(args.time, args.time), bounds=bnds, paired=False, funcNinit=funcNinit, deltainit=deltainit, feps=feps, disp=False)
 
+        pickle_filename = logfile_name + '.p'
+        pickle.dump(res, open( pickle_filename, "wb"))
         log(logfile, str(res.items()), stdout=True)
         logfile.close()
-        method, x_s, y_s, tme_s = load_data(logfile_name)
 
-        min_scalar_results = Opt_Results(res, 'Noisyopt')
-        min_scalar_results.plot_opt(x_s, y_s, x, y)
+
+    if args.plot:
+        logfile_name = args.plot
+        
+    res = pickle.load(open(logfile_name + '.p',"rb"))
+    method, x_s, y_s, time_s = load_data(logfile_name)
+
+    min_scalar_results = Opt_Results(res, 'Noisyopt', logfile_name, time_s)
+    min_scalar_results.process_time()
+    min_scalar_results.plot_opt(x_s, y_s, x, y)
