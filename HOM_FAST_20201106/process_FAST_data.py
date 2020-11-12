@@ -93,30 +93,41 @@ def process_HOM_data(data):
     HOMs = data['HOMs']
     num_HOMs = HOMs.shape[0]
     reps = HOMs.shape[1]
-    reps=26
 
     fig, axs = plt.subplots(2, 2)
-    homs_peak_based_mean = np.zeros(num_HOMs)
-    homs_peak_based_std = np.zeros(num_HOMs)
-    for hom in range(0,num_HOMs-2):
-        homs_peaks_based = np.zeros(reps)
-        for rep in range(0,reps):
-            hom_baseln = np.mean(np.concatenate((HOMs[hom][rep][400:600], HOMs[hom][rep][900:1000])))
+    homs_pk_bsd_mean = np.zeros(num_HOMs)
+    homs_pk_bsd_std = np.zeros(num_HOMs)
+    for hom in range(0, num_HOMs-2):
+        homs_pks_bsd = np.zeros(reps)
+        for rep in range(0, reps):
+            hom_baseln_a = HOMs[hom][rep][400:600]
+            hom_baseln_b = HOMs[hom][rep][900:1000]
+            hom_baseln = np.mean(np.concatenate((hom_baseln_a, hom_baseln_b)))
             hom_based = HOMs[hom][rep] - hom_baseln
-            axs[int(hom/2), hom%2].plot(hom_based)
-            homs_peaks_based[rep] = np.min(hom_based)
-        homs_peak_based_mean[hom] = np.mean(homs_peaks_based)
-        homs_peak_based_std[hom] = np.std(homs_peaks_based)
-        axs[int(hom/2), hom%2].set_xlim(740, 810)
+            axs[int(hom / 2), hom % 2].plot(hom_based)
+            homs_pks_bsd[rep] = np.min(hom_based)
+        homs_pk_bsd_mean[hom] = np.mean(homs_pks_bsd)
+        homs_pk_bsd_std[hom] = np.std(homs_pks_bsd)
+        axs[int(hom / 2), hom % 2].set_xlim(740, 810)
 
-    print('homs_peak_based_mean = ', homs_peak_based_mean)
-    print('homs_peak_based_std = ', homs_peak_based_std)
+    print('homs_peak_based_mean = ', homs_pk_bsd_mean)
+    print('homs_peak_based_std = ', homs_pk_bsd_std)
 
-    fig.suptitle('225 pC, 50 b, 0 Ampl, V101 = 1.04 A \n AllData_2020-11-06-19-27-15.mat', fontsize=16) # Hardcoded title
-    axs[0,0].set_title('CC1 Upstr Peak_Mean = %.3f Peak_STD = %.4f' % (homs_peak_based_mean[0], homs_peak_based_std[0]))
-    axs[0,1].set_title('CC1 Dwnstr Peak_Mean = %.3f Peak_STD = %.4f' % (homs_peak_based_mean[1], homs_peak_based_std[1]))
-    axs[1,0].set_title('CC2 Upstr Peak_Mean = %.3f Peak_STD = %.4f' % (homs_peak_based_mean[2], homs_peak_based_std[2]))
-    axs[1,1].set_title('CC2 Dwnstr Peak_Mean = %.3f Peak_STD = %.4f' % (homs_peak_based_mean[3], homs_peak_based_std[3]))
+    txt = ('225 pC, 50 b, 0 Ampl, V101 = 1.04 A\n' +
+           'AllData_2020-11-06-19-27-15.mat')
+    fig.suptitle(txt, fontsize=16)  # Hardcoded title
+    txt = ('CC1 Upstr Peak_Mean = ' + "{:.2f}".format(homs_pk_bsd_mean[0]) +
+           '  Peak_STD = ' + "{:.2f}".format(homs_pk_bsd_std[0]))
+    axs[0, 0].set_title(txt)
+    txt = ('CC1 Dwnstr Peak_Mean = ' + "{:.2f}".format(homs_pk_bsd_mean[1]) +
+           '  Peak_STD = ' + "{:.2f}".format(homs_pk_bsd_std[1]))
+    axs[0, 1].set_title(txt)
+    txt = ('CC2 Upstr Peak_Mean = ' + "{:.2f}".format(homs_pk_bsd_mean[2]) +
+           '  Peak_STD = ' + "{:.2f}".format(homs_pk_bsd_std[2]))
+    axs[1, 0].set_title(txt)
+    txt = ('CC2 Dwnstr Peak_Mean = ' + "{:.2f}".format(homs_pk_bsd_mean[3]) +
+           '  Peak_STD = ' + "{:.2f}".format(homs_pk_bsd_std[3]))
+    axs[1, 1].set_title(txt)
     plt.legend()
     plt.show()
 
@@ -145,13 +156,13 @@ def V101_HOM(data_file):
                 hom3_std.append(float(row[7]))
                 hom4_std.append(float(row[8]))
 
-    plt.errorbar(v101,hom1,yerr=hom1_std,label='CC1 Upstr')
-    plt.errorbar(v101,hom2,yerr=hom2_std,label='CC1 Dwnstr')
-    plt.errorbar(v101,hom3,yerr=hom3_std,label='CC2 Upstr')
-    plt.errorbar(v101,hom4,yerr=hom4_std,label='CC2 Dwnstr')
+    plt.errorbar(v101, hom1, yerr=hom1_std, label='CC1 Upstr')
+    plt.errorbar(v101, hom2, yerr=hom2_std, label='CC1 Dwnstr')
+    plt.errorbar(v101, hom3, yerr=hom3_std, label='CC2 Upstr')
+    plt.errorbar(v101, hom4, yerr=hom4_std, label='CC2 Dwnstr')
     plt.xlabel('V101 [A]')
     plt.ylabel('HOM Signal')
-    plt.title('225 pC, 50b, 0Ampl') # Hardcoded title
+    plt.title('225 pC, 50b, 0Ampl')  # Hardcoded title
     plt.legend()
     plt.grid(True)
     plt.show()
