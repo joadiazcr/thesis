@@ -3,9 +3,33 @@ import matplotlib.pyplot as plt
 import argparse
 import scipy.io as sio
 import csv
+import pandas as pd
+import seaborn as sns
+
+
+date = 'AllData_2020-11-20-'
+shift = 3
+#csv_file = "HOM_FAST/shift3_20201120/cmhoms_peaks.csv"
+csv_file = "HOM_FAST/shift4_20201203/cmhoms_peaks.csv"
+main_shots = 300
+main_charge = 250
+main_bunches = 50
+main_amp = 1
+V125 = 3.84
+H125 = 0.96
+main_time = '23-48-49'
+slac_loc = "SLAC Chassis Dwstr"
+fnal_loc = "FNAL Chassis Upstr"
+
+file_to_process = date + main_time + '.mat'
+main_title = ('CM2 ' + str(main_amp) + ' amplifier, ' + str(main_charge) + ' pC, ' + str(main_bunches) + 'b, V125=' + str(V125) + ' H125=' + str(H125) + ', 1st shot\n' +
+               file_to_process)
+main_title2 = ('CM2 ' + str(main_amp) + ' amplifier, ' + str(main_charge) + ' pC, ' + str(main_bunches) + ' b, V125=' + str(V125) + ' H125=' + str(H125) + ', ' + str(main_shots) + ' shots\n' +
+               file_to_process)
 
 
 def basic_file_info(data):
+    print(data.keys())
     H101 = np.mean(data['Magnets'][3, :])
     V101 = np.mean(data['Magnets'][4, :])
     H103 = np.mean(data['Magnets'][5, :])
@@ -17,10 +41,10 @@ def basic_file_info(data):
 
     # print(np.mean(data['BPMMags'][1,:,:],0))
     # print(np.max(data['BPMMags'][1,:,:]))
-    m = np.mean(data['BPMMags'][1, :, :], 0)
-    mx = np.max(data['BPMMags'][1, :, :])
-    numBunches = len(np.where(m/mx > 0.1)[0])
-    print('Bunches = ', numBunches)
+    #m = np.mean(data['BPMMags'][1, :, :], 0)
+    #mx = np.max(data['BPMMags'][1, :, :])
+    #numBunches = len(np.where(m/mx > 0.1)[0])
+    #print('Bunches = ', numBunches)
 
     bCharge = (np.mean(np.mean(data['Toroids'][0, :, 1:]))*100)*10
     print('Bunch charge = ', bCharge, 'pC/b')
@@ -67,11 +91,34 @@ def plot_BPMMags(data, mode):
     plt.show()
 
 
+def plot_BPM(data, mode):
+    print("Plotting BPM data")
+    BPMs = data['BPMs']
+    num_BPMs = BPMs.shape[0]
+    reps = BPMs.shape[1]
+    reps = 10
+    points = BPMs.shape[2]
+    print('Num BPMs = ', num_BPMs)
+    print('BPMs Repetitions = ', reps)
+    print('BPMs Points = ', points)
+    if mode == 0:
+        title = 'BPMs'
+        for bpm in range(0, num_BPMs):
+            plt.plot(BPMs[bpm][0], label='BPM %s' %(bpm+1))
+        plt.legend()
+    else:
+        title = 'BPM ' + str(mode)
+        for rep in range(0, reps):
+            plt.plot(BPMs[mode-1][rep])
+    plt.title(title)
+    plt.show()
+
+
 def plot_raw_HOMs(data, mode):
     HOMs = data['HOMs']
     num_HOMs = HOMs.shape[0]
     reps = HOMs.shape[1]
-    points = HOMs.shape[2]
+    points = HOMs.shape[2] # num of bunches + 6
     print('Num HOMs = ', num_HOMs)
     print('Repetitions = ', reps)
     print('Points = ', points)
@@ -84,8 +131,86 @@ def plot_raw_HOMs(data, mode):
         title = 'HOM ' + str(mode)
         for rep in range(0, reps):
             plt.plot(HOMs[mode-1][rep])
-    plt.xlim([740, 790])
+    plt.xlim([740, 810])
     plt.title(title)
+    plt.show()
+
+
+def plot_raw_CMHOMs(data, mode, s):
+    CMHOMs = data['CMHOMs']
+    num_CMHOMs = CMHOMs.shape[0]
+    reps = CMHOMs.shape[1]
+    points = CMHOMs.shape[2] # num of bunches + 6
+    print('Num CMHOMs = ', num_CMHOMs)
+    print('Repetitions = ', reps)
+    print('Points = ', points)
+    if mode == 0:
+        fig, axs = plt.subplots(1, 2)
+        fig.suptitle(main_title, fontsize=16)  # Hardcoded title
+        for cmhom in range(0, 8):
+            axs[0].plot(CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
+            axs[0].legend()
+            axs[0].set_xlabel('Sample')
+            axs[0].set_ylabel('HOM Signal (V)')
+            axs[0].set_title(slac_loc)
+            axs[0].set_xlim(200,750)
+        for cmhom in range(8, num_CMHOMs):
+            axs[1].plot(CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
+            axs[1].legend()
+            axs[1].set_xlabel('Sample')
+            axs[1].set_ylabel('HOM Signal (V)')
+            axs[1].set_title(fnal_loc)
+            axs[1].set_xlim(200,750)
+    else:
+        title = 'CMHOM ' + str(mode)
+        for rep in range(0, reps):
+            plt.plot(CMHOMs[mode-1][rep])
+
+    fig.set_size_inches((15.5, 8))
+    if s:
+        fig.savefig(main_time + '_first.png', dpi=500)
+    plt.show()
+
+def process_BPM_data(data):
+    print("Processing BPM data")
+    BPMs = data['BPMs']
+    num_BPMs = BPMs.shape[0]
+    reps = BPMs.shape[1]
+    points = BPMs.shape[2]
+    print('Num BPMs = ', num_BPMs)
+    print('BPMs Repetitions = ', reps)
+    print('BPMs Points = ', points)
+
+    BPMstart = 10
+    BPMend = 50
+
+    bpm_means = np.zeros(num_BPMs)
+    for bpm in range(0,num_BPMs):
+        bpm_rep_mean = np.zeros(reps)
+        for rep in range(0,reps):
+            bpm_rep_mean[rep] = np.mean(BPMs[bpm][rep][BPMstart:BPMend])
+        bpm_means[bpm] = np.mean(bpm_rep_mean)
+    print(bpm_means)
+
+    cc1_pos = 2.79763  # meters
+    cc2_pos = 5.506526  # meters
+    ccLen = 1.0  # meters
+
+    bpm_means_h = bpm_means[0:][::2] # Horizontal BPMs
+    bpm_means_h = [x / 1000 for x in bpm_means_h]
+    bpm_means_v = bpm_means[1:][::2] # Vertical BPMs
+    bpm_means_v = [x / 1000 for x in bpm_means_v]
+    plt.plot(data['bpmPos'][0:6], bpm_means_h[0:6], 'o-')
+    plt.xlabel('Beamline Position (m)')
+    plt.ylabel('Position (mm)')
+    plt.xlim([0, 10])
+    plt.ylim([-15, 15])
+    plt.vlines(cc1_pos - (ccLen/2.0), -15, 15)
+    plt.vlines(cc1_pos + (ccLen/2.0), -15, 15)
+    plt.vlines(cc2_pos - (ccLen/2.0), -15, 15)
+    plt.vlines(cc2_pos + (ccLen/2.0), -15, 15)
+    plt.text(cc1_pos , -14, 'CC1', ha='center')
+    plt.text(cc2_pos, -14, 'CC2', ha='center')
     plt.show()
 
 
@@ -113,21 +238,90 @@ def process_HOM_data(data):
     print('homs_peak_based_mean = ', homs_pk_bsd_mean)
     print('homs_peak_based_std = ', homs_pk_bsd_std)
 
-    txt = ('225 pC, 50 b, 0 Ampl, V101 = 1.04 A\n' +
-           'AllData_2020-11-06-19-27-15.mat')
+    txt = ('SLAC #2 chassis, 100 pC, 1 b, 1 Ampl, H101 = -0.875 A, 100 shots\n' +
+           'AllData_2020-11-12-21-18-11.mat')
     fig.suptitle(txt, fontsize=16)  # Hardcoded title
-    txt = ('CC1 Upstr Peak_Mean = ' + "{:.2f}".format(homs_pk_bsd_mean[0]) +
-           '  Peak_STD = ' + "{:.2f}".format(homs_pk_bsd_std[0]))
+    txt = ('CC1 Upstr Peak_Mean = ' + "{:.3f}".format(homs_pk_bsd_mean[0]) +
+           '  Peak_STD = ' + "{:.4f}".format(homs_pk_bsd_std[0]))
     axs[0, 0].set_title(txt)
-    txt = ('CC1 Dwnstr Peak_Mean = ' + "{:.2f}".format(homs_pk_bsd_mean[1]) +
-           '  Peak_STD = ' + "{:.2f}".format(homs_pk_bsd_std[1]))
+    txt = ('CC1 Dwnstr Peak_Mean = ' + "{:.3f}".format(homs_pk_bsd_mean[1]) +
+           '  Peak_STD = ' + "{:.4f}".format(homs_pk_bsd_std[1]))
     axs[0, 1].set_title(txt)
-    txt = ('CC2 Upstr Peak_Mean = ' + "{:.2f}".format(homs_pk_bsd_mean[2]) +
-           '  Peak_STD = ' + "{:.2f}".format(homs_pk_bsd_std[2]))
+    txt = ('CC2 Upstr Peak_Mean = ' + "{:.3f}".format(homs_pk_bsd_mean[2]) +
+           '  Peak_STD = ' + "{:.4f}".format(homs_pk_bsd_std[2]))
     axs[1, 0].set_title(txt)
-    txt = ('CC2 Dwnstr Peak_Mean = ' + "{:.2f}".format(homs_pk_bsd_mean[3]) +
-           '  Peak_STD = ' + "{:.2f}".format(homs_pk_bsd_std[3]))
+    txt = ('CC2 Dwnstr Peak_Mean = ' + "{:.3f}".format(homs_pk_bsd_mean[3]) +
+           '  Peak_STD = ' + "{:.4f}".format(homs_pk_bsd_std[3]))
     axs[1, 1].set_title(txt)
+    plt.legend()
+    plt.show()
+
+
+def process_CMHOM_data(data, s):
+    CMHOMs = data['CMHOMs']
+    num_CMHOMs = CMHOMs.shape[0]
+    reps = CMHOMs.shape[1]
+
+    fig1, axs1 = plt.subplots(2, 4)
+    plt.subplots_adjust(left=0.06, bottom=0.07, right=0.97, top=None, wspace=None, hspace=0.24)
+    fig1.suptitle(slac_loc + ' ' + main_title2, fontsize=16)  # Hardcoded title
+    fig2, axs2 = plt.subplots(2, 3)
+    plt.subplots_adjust(left=0.06, bottom=0.07, right=0.97, top=None, wspace=None, hspace=0.24)
+    fig2.suptitle(fnal_loc + ' ' + main_title2, fontsize=16)  # Hardcoded title
+    cmhoms_pk_bsd_mean = np.zeros(num_CMHOMs)
+    cmhoms_pk_bsd_std = np.zeros(num_CMHOMs)
+    for cmhom in range(0, num_CMHOMs):
+        cmhoms_pks_bsd = np.zeros(reps)
+        for rep in range(0, reps):
+            cmhom_baseln_a = CMHOMs[cmhom][rep][100:200]
+            cmhom_baseln_b = CMHOMs[cmhom][rep][1000:1500]
+            cmhom_baseln = np.mean(np.concatenate((cmhom_baseln_a, cmhom_baseln_b)))
+            cmhom_based = CMHOMs[cmhom][rep] - cmhom_baseln
+            if cmhom < 12:
+                cmhoms_pks_bsd[rep] = np.max(cmhom_based)
+            elif cmhom >=12:
+                cmhoms_pks_bsd[rep] = np.min(cmhom_based)
+            if cmhom < 8:
+                axs1[int(cmhom / 4), cmhom % 4].plot(cmhom_based)
+            elif cmhom >= 8:
+                axs2[int((cmhom-8) / 3), (cmhom-8) % 3].plot(cmhom_based)
+        cmhoms_pk_bsd_mean[cmhom] = np.mean(cmhoms_pks_bsd)
+        cmhoms_pk_bsd_std[cmhom] = np.std(cmhoms_pks_bsd)
+        txt = (data['CMHOMs_List'][cmhom] + ' Pk_mean = ' + "{:.3f}".format(cmhoms_pk_bsd_mean[cmhom]) +
+               '  Pk_STD = ' + "{:.4f}".format(cmhoms_pk_bsd_std[cmhom]))
+        axs_title = txt
+        if cmhom < 8:
+            axs1[int(cmhom / 4), cmhom % 4].set_xlim(200, 1000)
+            axs1[int(cmhom / 4), cmhom % 4].set_title(axs_title)
+            if int(cmhom / 4) == 1:
+                axs1[int(cmhom / 4), cmhom % 4].set_xlabel('Sample')
+            if cmhom % 4 == 0:
+                axs1[int(cmhom / 4), cmhom % 4].set_ylabel('HOM Signal (V)')
+        elif cmhom >= 8:
+            axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_xlim(200, 750)
+            axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_title(axs_title)
+            if int((cmhom-8) / 3) == 1:
+                axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_xlabel('Sample')
+            if (cmhom-8) % 3 == 0:
+                axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_ylabel('HOM Signal (V)')
+
+
+    # save to csv file
+    data = pd.read_csv(csv_file)
+    new_row = [shift,main_time,main_bunches,main_charge,main_shots,V125,H125,slac_loc] # time,bunches,pC_b,shots
+    new_row = np.append(new_row,cmhoms_pk_bsd_mean)
+    new_row = pd.DataFrame([new_row], columns=data.columns)
+    data = data.append(new_row, ignore_index=True)
+    data.to_csv(csv_file,index=False,)
+
+    print('cmhoms_peak_based_mean = ', cmhoms_pk_bsd_mean)
+    print('cmhoms_peak_based_std = ', cmhoms_pk_bsd_std)
+
+    fig1.set_size_inches((15.5, 8))
+    fig2.set_size_inches((15.5, 8))
+    if s:
+        fig1.savefig(main_time + '_SLAC.png', dpi=500)
+        fig2.savefig(main_time + '_FNAL.png', dpi=500)        
     plt.legend()
     plt.show()
 
@@ -145,7 +339,7 @@ def V101_HOM(data_file):
         hom3_std = []
         hom4_std = []
         for row in readCSV:
-            if 'V101' not in row:
+            if 'V101' not in row and 'h101' not in row:
                 v101.append(float(row[0]))
                 hom1.append(float(row[1]))
                 hom2.append(float(row[2]))
@@ -156,17 +350,358 @@ def V101_HOM(data_file):
                 hom3_std.append(float(row[7]))
                 hom4_std.append(float(row[8]))
 
-    plt.errorbar(v101, hom1, yerr=hom1_std, label='CC1 Upstr')
-    plt.errorbar(v101, hom2, yerr=hom2_std, label='CC1 Dwnstr')
-    plt.errorbar(v101, hom3, yerr=hom3_std, label='CC2 Upstr')
-    plt.errorbar(v101, hom4, yerr=hom4_std, label='CC2 Dwnstr')
-    plt.xlabel('V101 [A]')
-    plt.ylabel('HOM Signal')
-    plt.title('225 pC, 50b, 0Ampl')  # Hardcoded title
+    plt.errorbar(v101, np.abs(hom1), yerr=hom1_std, label='CC1 Upstr')
+    plt.errorbar(v101, np.abs(hom2), yerr=hom2_std, label='CC1 Dwnstr')
+    plt.errorbar(v101, np.abs(hom3), yerr=hom3_std, label='CC2 Upstr')
+    plt.errorbar(v101, np.abs(hom4), yerr=hom4_std, label='CC2 Dwnstr')
+    plt.xlabel('H101 Magnet Current (A)')
+    plt.ylabel('HOM Signal Peak (|V|)')
+    plt.title('SLAC Chassis #2, 100 pC, 1 b, 1 Ampl, 100 shots')  # Hardcoded title
     plt.legend()
     plt.grid(True)
     plt.show()
 
+
+def CMHOM_125(data_file):
+    df = pd.read_csv("HOM_FAST/shift4_20201203/cmhoms_peaks.csv")
+    cavs = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8']
+
+    h_upstr_250_50 = df[df['V125']==4.3][df['slac_loc']=='SLAC Chassis Upstr'][df['pC_b']==250][df['bunches']==50]
+    h_upstr_250_50 = h_upstr_250_50.sort_values(by=['H125'])
+    for cav in cavs:
+        plt.plot(h_upstr_250_50['H125'].to_numpy(), h_upstr_250_50[cav].to_numpy(), '--o',label=cav)
+    plt.ylim(bottom=0.0)
+    plt.xlabel('H125 Magnet Current (A)', fontsize=20)
+    plt.ylabel('HOM Signal Peak (|V|)', fontsize=20)
+    plt.title('SLAC Chassis Upstream, 250 pC, 50 b, 1 Ampl, V125=4.3 A', fontsize=20)  # Hardcoded title
+    plt.legend(loc='upper right', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.grid(True)
+    plt.show()
+
+    h_dwstr_250_50 = df[df['V125']==4.3][df['slac_loc']=='SLAC Chassis Dwstr'][df['pC_b']==250][df['bunches']==50]
+    h_dwstr_250_50 = h_dwstr_250_50.sort_values(by=['H125'])
+    for cav in cavs:
+        plt.plot(h_dwstr_250_50['H125'].to_numpy(), h_dwstr_250_50[cav].to_numpy(), '--o',label=cav)
+    plt.ylim(bottom=0.0)
+    plt.xlabel('H125 Magnet Current (A)', fontsize=20)
+    plt.ylabel('HOM Signal Peak (|V|)', fontsize=20)
+    plt.title('SLAC Chassis Downstream, 250 pC, 50 b, 1 Ampl, V125=4.3 A', fontsize=20)  # Hardcoded title
+    plt.legend(loc='upper right', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.grid(True)
+    plt.show()
+
+    h_upstr_250_1 = df[df['V125']==4.3][df['slac_loc']=='SLAC Chassis Upstr'][df['pC_b']==250][df['bunches']==1]
+    h_upstr_250_1 = h_upstr_250_1.sort_values(by=['H125'])
+    for cav in cavs:
+        plt.plot(h_upstr_250_1['H125'].to_numpy(), h_upstr_250_1[cav].to_numpy(), '--o',label=cav)
+    plt.ylim(bottom=0.0)
+    plt.xlabel('H125 Magnet Current (A)', fontsize=20)
+    plt.ylabel('HOM Signal Peak (|V|)', fontsize=20)
+    plt.title('SLAC Chassis Upstream, 250 pC, 1 b, 1 Ampl, V125=4.3 A', fontsize=20)  # Hardcoded title
+    plt.legend(loc='upper right', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.grid(True)
+    plt.show()
+
+    h_dwstr_250_1 = df[df['V125']==4.3][df['slac_loc']=='SLAC Chassis Dwstr'][df['pC_b']==250][df['bunches']==1]
+    h_dwstr_250_1 = h_dwstr_250_1.sort_values(by=['H125'])
+    for cav in cavs:
+        plt.plot(h_dwstr_250_1['H125'].to_numpy(), h_dwstr_250_1[cav].to_numpy(), '--o',label=cav)
+    plt.ylim(bottom=0.0)
+    plt.xlabel('H125 Magnet Current (A)', fontsize=20)
+    plt.ylabel('HOM Signal Peak (|V|)', fontsize=20)
+    plt.title('SLAC Chassis Downstream, 250 pC, 1 b, 1 Ampl, V125=4.3 A', fontsize=20)  # Hardcoded title
+    plt.legend(loc='upper right', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.grid(True)
+    plt.show()
+
+    v_dwstr_250_50 = df[df['H125']==0.96][df['slac_loc']=='SLAC Chassis Dwstr'][df['pC_b']==250][df['bunches']==50]
+    v_dwstr_250_50 = v_dwstr_250_50.sort_values(by=['V125'])
+    for cav in cavs:
+        plt.plot(v_dwstr_250_50['V125'].to_numpy(), v_dwstr_250_50[cav].to_numpy(), '--o',label=cav)
+    plt.ylim(bottom=0.0)
+    plt.xlabel('V125 Magnet Current (A)', fontsize=20)
+    plt.ylabel('HOM Signal Peak (|V|)', fontsize=20)
+    plt.title('SLAC Chassis Downstream, 250 pC, 50 b, 1 Ampl, H125=0.96 A', fontsize=20)  # Hardcoded title
+    plt.legend(loc='upper right', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.grid(True)
+    plt.show()
+
+    v_upstr_250_50 = df[df['H125']==0.96][df['slac_loc']=='SLAC Chassis Upstr'][df['pC_b']==250][df['bunches']==50]
+    v_upstr_250_50 = v_upstr_250_50.sort_values(by=['V125'])
+    for cav in cavs:
+        plt.plot(v_upstr_250_50['V125'].to_numpy(), v_upstr_250_50[cav].to_numpy(), '--o',label=cav)
+    plt.ylim(bottom=0.0)
+    plt.xlabel('V125 Magnet Current (A)', fontsize=20)
+    plt.ylabel('HOM Signal Peak (|V|)', fontsize=20)
+    plt.title('SLAC Chassis Upstream, 250 pC, 50 b, 1 Ampl, H125=0.96 A', fontsize=20)  # Hardcoded title
+    plt.legend(loc='upper right', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.grid(True)
+    plt.show()
+
+
+def V101_BPM(data_file):
+    with open(data_file) as csvfile:
+        readCSV = csv.reader(csvfile, delimiter=',')
+        v101 = []
+        bpm101PH = []
+        bpm101PV = []
+        bpm102PH = []
+        bpm102PV = []
+        bpm103PH = []
+        bpm103PV = []
+        bpm104PH = []
+        bpm104PV = []
+        bpm106PH = []
+        bpm106PV = []
+        bpm107PH = []
+        bpm107PV = []
+        bpm111PH = []
+        bpm111PV = []
+        bpm113PH = []
+        bpm113PV = []
+        bpm117PH = []
+        bpm117PV = []
+        bpm118PH = []
+        bpm118PV = []
+        bpm120PH = []
+        bpm120PV = []
+        bpm121PH = []
+        bpm121PV = []
+        bpm122PH = []
+        bpm122PV = []
+        bpm123PH = []
+        bpm123PV = []
+        bpm124PH = []
+        bpm124PV = []
+        bpm125PH = []
+        bpm125PV = []
+
+        for row in readCSV:
+            if 'V101' not in row and 'h101' not in row:
+                v101.append(float(row[0]))
+                bpm101PH.append(float(row[1]))
+                bpm101PV.append(float(row[2]))
+                bpm102PH.append(float(row[3]))
+                bpm102PV.append(float(row[4]))
+                bpm103PH.append(float(row[5]))
+                bpm103PV.append(float(row[6]))
+                bpm104PH.append(float(row[7]))
+                bpm104PV.append(float(row[8]))
+                bpm106PH.append(float(row[9]))
+                bpm106PV.append(float(row[10]))
+                bpm107PH.append(float(row[11]))
+                bpm107PV.append(float(row[12]))
+                bpm111PH.append(float(row[13]))
+                bpm111PV.append(float(row[14]))
+                bpm113PH.append(float(row[15]))
+                bpm113PV.append(float(row[16]))
+                bpm117PH.append(float(row[17]))
+                bpm117PV.append(float(row[18]))
+                bpm118PH.append(float(row[19]))
+                bpm118PV.append(float(row[20]))
+                bpm120PH.append(float(row[21]))
+                bpm120PV.append(float(row[22]))
+                bpm121PH.append(float(row[23]))
+                bpm121PV.append(float(row[24]))
+                bpm122PH.append(float(row[25]))
+                bpm122PV.append(float(row[26]))
+                bpm123PH.append(float(row[27]))
+                bpm123PV.append(float(row[28]))
+                bpm124PH.append(float(row[29]))
+                bpm124PV.append(float(row[30]))
+                bpm125PH.append(float(row[31]))
+                bpm125PV.append(float(row[32]))
+
+
+    plt.plot(v101, bpm101PH, '-o', label='B101PH')
+    plt.plot(v101, bpm102PH, '-o', label='B102PH')
+    plt.plot(v101, bpm103PH, '-o', label='B103PH')
+    plt.plot(v101, bpm104PH, '-o', label='B104PH')
+    plt.plot(v101, bpm106PH, '-o', label='B106PH')
+    plt.plot(v101, bpm107PH, '-o', label='B107PH')
+    plt.xlabel('H101 Current (A)')
+    plt.ylabel('Beam Position (um)')
+    plt.title('SLAC Chassis #2, 250 pC, 50 b, 0 Ampl, 300 shots')  # Hardcoded title
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    cc1_pos = 2.79763  # meters
+    cc2_pos = 5.506526  # meters
+    ccLen = 1.0  # meters
+    bpmPos = [923.561,1432.107,4107.671,6819.571,8331.05,
+              9142.588,10646.421,11534.404,13109.365,15724.128,
+              16481.008,17341.977,18153.57075,19000,20000, 21000] # mm
+
+    plt.plot(np.ones(5)*bpmPos[0]/1000, bpm101PH,'o', label='B101PH')
+    plt.plot(np.ones(5)*bpmPos[1]/1000, bpm102PH,'o', label='B102PH')
+    plt.plot(np.ones(5)*bpmPos[2]/1000, bpm103PH,'o', label='B103PH')
+    plt.plot(np.ones(5)*bpmPos[3]/1000, bpm104PH,'o', label='B104PH')
+    plt.plot(np.ones(5)*bpmPos[4]/1000, bpm106PH,'o', label='B106PH')
+    plt.plot(np.ones(5)*bpmPos[5]/1000, bpm107PH,'o', label='B107PH')
+    plt.plot(np.ones(5)*bpmPos[6]/1000, bpm111PH,'o', label='B111PH')
+    plt.plot(np.ones(5)*bpmPos[7]/1000, bpm113PH,'o', label='B113PH')
+    plt.plot(np.ones(5)*bpmPos[8]/1000, bpm117PH,'o', label='B117PH')
+    plt.plot(np.ones(5)*bpmPos[9]/1000, bpm118PH,'o', label='B118PH')
+    plt.plot(np.ones(5)*bpmPos[10]/1000, bpm120PH,'o', label='B120PH')
+    plt.plot(np.ones(5)*bpmPos[11]/1000, bpm121PH,'o', label='B121PH')
+    plt.plot(np.ones(5)*bpmPos[12]/1000, bpm122PH,'o', label='B122PH')
+    plt.plot(np.ones(5)*bpmPos[13]/1000, bpm123PH,'o', label='B123PH')
+    plt.plot(np.ones(5)*bpmPos[14]/1000, bpm124PH,'o', label='B124PH')
+    plt.plot(np.ones(5)*bpmPos[15]/1000, bpm125PH,'o', label='B125PH')
+    plt.xlabel('Beamline Position (um)')
+    plt.ylabel('Beam Position (um)')
+    plt.xlim([0, 22])
+    plt.ylim([-15000, 15000])
+    plt.vlines(cc1_pos - (ccLen/2.0), -10000, 10000)
+    plt.vlines(cc1_pos + (ccLen/2.0), -10000, 10000)
+    plt.vlines(cc2_pos - (ccLen/2.0), -10000, 10000)
+    plt.vlines(cc2_pos + (ccLen/2.0), -10000, 10000)
+    plt.text(cc1_pos , -9000, 'CC1', ha='center')
+    plt.text(cc2_pos, -9000, 'CC2', ha='center')
+    plt.title('SLAC Chassis #2, 250 pC, 50 b, 0 Ampl, 300 shots')  # Hardcoded title
+    plt.legend()
+    plt.show()
+
+
+def charge_CMHOM(data_file):
+    with open(data_file) as csvfile:
+        readCSV = csv.reader(csvfile, delimiter=',')
+        charge = []
+        bunches = []
+        shots =[]
+        c1 = []
+        c2 = []
+        c3 = []
+        c4 = []
+        c5 = []
+        c6 = []
+        c7 = []
+        c8 = []
+        c1_175 = []
+        c8_175 = []
+        c1_250 = []
+        c8_250 = []
+        c1_325 = []
+        c8_325 = []
+        for row in readCSV:
+            if 'time' not in row:
+                bunches.append(float(row[1]))
+                charge.append(float(row[2]))
+                shots.append(float(row[3]))
+                c1.append(float(row[4]))
+                c2.append(float(row[5]))
+                c3.append(float(row[6]))
+                c4.append(float(row[7]))
+                c5.append(float(row[8]))
+                c6.append(float(row[9]))
+                c7.append(float(row[10]))
+                c8.append(float(row[11]))
+                c1_175.append(float(row[12]))
+                c8_175.append(float(row[13]))
+                c1_250.append(float(row[14]))
+                c8_250.append(float(row[15]))
+                c1_325.append(float(row[16]))
+                c8_325.append(float(row[17]))
+
+
+    data = {'bunches' : bunches, 'charge' : charge, 'shots' : shots,
+            'c1' : c1, 'c2' : c2, 'c3' : c3, 'c4' : c4,
+            'c5' : c5, 'c6' : c6, 'c7' : c7, 'c8' : c8,
+            'c1_175' : c1_175, 'c8_175' : c8_175,'c1_250' : c1_250,
+            'c8_250' : c8_250, 'c1_325' : c1_325,'c8_325' : c8_325,}
+
+    df = pd.DataFrame(data,columns=['bunches','charge','shots',
+            'c1','c2','c3','c4','c5','c6','c7','c8',
+            'c1_175','c8_175','c1_250',
+            'c8_250','c1_325','c8_325'])
+
+    #df.plot.scatter(x='charge', y='c1', s=df['bunches'])
+    sns.catplot(x="charge", y="c1", col='bunches', data=df,label='c1')
+    sns.scatterplot(x="charge", y="c2", data=df,label='c2')
+    plt.show()
+    exit()
+
+    plt.plot(charge, c1, '*', label='C1')
+    color = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+    plt.scatter(charge[0:2],c1[0:2], c=color[0], marker='o', label='C1')
+    plt.scatter(charge[2:4],c1[2:4], c=color[0], marker='*')
+    plt.scatter(charge[4:5],c1[4:5], c=color[0], marker='^')
+    plt.scatter(charge[0:2],c2[0:2], c=color[1], marker='o', label='C2')
+    plt.scatter(charge[2:4],c2[2:4], c=color[1], marker='*')
+    plt.scatter(charge[4:5],c2[4:5], c=color[1], marker='^')
+    plt.scatter(charge[0:2],c3[0:2], c='r', marker='o', label='C3')
+    plt.scatter(charge[2:4],c3[2:4], c='r', marker='*')
+    plt.scatter(charge[4:5],c3[4:5], c='r', marker='^')
+    plt.scatter(charge[0:2],c4[0:2], c='c', marker='o', label='C4')
+    plt.scatter(charge[2:4],c4[2:4], c='c', marker='*')
+    plt.scatter(charge[4:5],c4[4:5], c='c', marker='^')
+    plt.scatter(charge[0:2],c5[0:2], c='m', marker='o', label='C5')
+    plt.scatter(charge[2:4],c5[2:4], c='m', marker='*')
+    plt.scatter(charge[4:5],c5[4:5], c='m', marker='^')
+    plt.scatter(charge[0:2],c6[0:2], c='y', marker='o', label='C6')
+    plt.scatter(charge[2:4],c6[2:4], c='y', marker='*')
+    plt.scatter(charge[4:5],c6[4:5], c='y', marker='^')
+    plt.scatter(charge[0:2],c7[0:2], c='k', marker='o', label='C7')
+    plt.scatter(charge[2:4],c7[2:4], c='k', marker='*')
+    plt.scatter(charge[4:5],c7[4:5], c='k', marker='^')
+    plt.scatter(charge[0:2],c8[0:2], c='w', marker='o', label='C8')
+    plt.scatter(charge[2:4],c8[2:4], c='w', marker='*')
+    plt.scatter(charge[4:5],c8[4:5], c='w', marker='^')
+    plt.xlabel('Bunch Charge (pC)')
+    plt.ylabel('HOM Signal Peak (V)')
+    plt.title('SLAC Chassis #2, 100 pC, 1 b, 1 Ampl, 100 shots')  # Hardcoded title
+    plt.legend()
+    plt.grid(False)
+    plt.show()
+
+
+def charge_CMHOM_pd(data_file):
+    with open(data_file) as csvfile:
+        readCSV = csv.reader(csvfile, delimiter=',')
+        charge = []
+        bunches = []
+        shots =[]
+        cav = []
+        hom = []
+        loc = []
+        
+        for row in readCSV:
+            if 'time' not in row:
+                bunches.append(int(row[1]))
+                charge.append(int(row[2]))
+                shots.append(int(row[3]))
+                cav.append(int(row[4]))
+                hom.append(float(row[5]))
+                loc.append(row[6])
+
+    data = {'bunches' : bunches, 'charge' : charge, 'shots' : shots,
+            'cav' : cav, 'hom' : hom, 'loc' : loc}
+
+    df = pd.DataFrame(data,columns=['bunches','charge','shots',
+            'cav', 'hom', 'loc'])
+
+    slac_cavs = [1,2,3,4,5,6,7,8]
+    df_slac = df[df.cav.isin(slac_cavs)]
+    g = sns.catplot(x="charge", y="hom", hue='cav', row='bunches', col='loc', jitter=False, data=df_slac, sharey=False)
+    g.set_xlabels('Bunch Charge (pC)')
+    g.set_ylabels('HOM Peak (V)')
+    #plt.show(g)
+
+    # Plot suggested by Alex
+    alex_plt = sns.catplot(x="cav", y="hom", hue='charge', col='loc', row='bunches', jitter=False, data=df_slac, sharey=False)
+    alex_plt.set_xlabels('Cavity')
+    alex_plt.set_ylabels('HOM Peak (V)')
+    #title = ('Up and downstream HOM peaks V125 at -1 Amp\n' +
+    #         'SLAC Chassis, 250 pC, 50 b, 1 Ampl, 300 shots')  # Hardcoded title
+    #plt.title(title)
+    plt.show(alex_plt)
 
 if __name__ == "__main__":
     des = 'Procces and plot FAST data'
@@ -175,16 +710,32 @@ if __name__ == "__main__":
                         help='File with data to be processed/plotted')
     parser.add_argument('-hom', action="store_true",
                         help='Plot HOM data')
+    parser.add_argument('-cmhom', action="store_true",
+                        help='Plot CMHOM data')
+    parser.add_argument('-bpmmag', action="store_true",
+                        help='Plot BPM magnets data')
     parser.add_argument('-bpm', action="store_true",
                         help='Plot BPM data')
     parser.add_argument('-tor', action="store_true",
                         help='Plot toroid data')
     parser.add_argument('-p', action="store_true",
                         help='Process HOM data')
+    parser.add_argument('-pcmhom', action="store_true",
+                        help='Process CMHOM data')
+    parser.add_argument('-pbpm', action="store_true",
+                        help='Process BPM data')
     parser.add_argument('-vh', action="store_true",
-                        help='Plot V101 vs HOMs')
+                        help='Plot V/H101 vs HOMs')
+    parser.add_argument('-vb', action="store_true",
+                        help='Plot V/H101 vs BPMs')
+    parser.add_argument('-ccm', action="store_true",
+                        help='Plot charge vs CMHOM')
+    parser.add_argument('-cccmhom', action="store_true",
+                        help='Plot correcotr current vs CMHOM')
+    parser.add_argument('-s', action="store_true",
+                        help='Save plot')
     parser.add_argument('-m', metavar='mode', dest='mode', type=int,
-                        choices=range(0, 7), default=0,
+                        choices=range(0, 100), default=0,
                         help='Select the device number. 0 to plot all devices')
 
     args = parser.parse_args()
@@ -192,17 +743,52 @@ if __name__ == "__main__":
     if args.vh:
         V101_HOM(args.data_file)
         exit()
+    if args.vb:
+        V101_BPM(args.data_file)
+        exit()
+    if args.ccm:
+        charge_CMHOM_pd(args.data_file)
+        exit()
+
+    if args.cccmhom:
+        CMHOM_125(args.data_file)
+        exit()
 
     data = sio.loadmat(args.data_file)
     HOMsList = ['CC1 Upstream', 'CC1 Downstream', 'CC2 Upstream',
                 'CC2 Downstream', 'C1IW1A?', 'C1IW1B?']
     data['HOMs_List'] = HOMsList
+    CMHOMsList = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8',
+                  'C1_1.75', 'C8_1.75', 'C1_2.5', 'C8_2.5',
+                  'C1_3.25', 'C8_3.25',]
+    data['CMHOMs_List'] = CMHOMsList
+    bpmPos = [0.923561,1.432107,4.107671,6.819571,8.33105,9.142588]  # meters
+    data['bpmPos'] = bpmPos
+    BPMsList = ['B101PH', 'B101PV', 'B102PH', 'B102PV',
+                'B103PH', 'B103PV', 'B104PH', 'B104PV',
+                'B106PH', 'B106PV', 'B107PH', 'B107PV',
+                'B111PH', 'B111PV', 'B113PH', 'B113PV',
+                'B117PH', 'B117PV', 'B118PH', 'B118PV',
+                'B120PH', 'B120PV', 'B121PH', 'B121PV',
+                'B122PH', 'B122PV', 'B123PH', 'B123PV',
+                'B124PH', 'B124PV', 'B125PH', 'B125PV',
+                ]
+    data['BPMsList'] = BPMsList
+    
     basic_file_info(data)
     if args.p:
         process_HOM_data(data)
+    if args.pbpm:
+        process_BPM_data(data)
     if args.tor:
         plot_toroids(data, args.mode)
-    if args.bpm:
+    if args.bpmmag:
         plot_BPMMags(data, args.mode)
+    if args.bpm:
+        plot_BPM(data, args.mode)
     if args.hom:
         plot_raw_HOMs(data, args.mode)
+    if args.cmhom:
+        plot_raw_CMHOMs(data, args.mode, args.s)
+    if args.pcmhom:
+        process_CMHOM_data(data, args.s)
