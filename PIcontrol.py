@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import pi
 import matplotlib.pyplot as plt
 import argparse
 import json
@@ -16,11 +17,11 @@ def find_zero_crossing(vector, frequency_vector):
 
 def lpf(f, wc, cavity):
     gain = 20*np.log10(abs(cavity))
-    phase = np.angle(cavity) * (180/np.pi)
-    fc = wc/(np.pi*2)
+    phase = np.angle(cavity) * (180/pi)
+    fc = wc/(pi*2)
 
     plt.subplot(2, 1, 1)
-    plt.title("Low Pass Filter amplitude and phase response with cut-off frequency = %s" % fc)
+    plt.title("Low Pass Filter amplitude and phase response with cut-off frequency = %s" % np.around(fc, 2))
     plt.plot(f, gain)
     plt.xscale('log')
     plt.axhline(y=-3, color='r', linestyle='--')
@@ -57,8 +58,8 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
     # Calculate corresponding values for ki and kp
     Kp = stable_gbw*2*np.pi/wc
     Ki = Kp*(2*np.pi*control_zero)
-    print ("Proportional gain kp=%s", Kp)
-    print ("Integral gain ki=%s", Ki)
+    print ("Proportional gain kp=", np.around(Kp, 2))
+    print ("Integral gain ki=", np.around(Ki, 2))
 
     # Calculate transfer functions
     PI = (Kp + Ki/s)
@@ -76,11 +77,8 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
     GM = -gain[f_180_index]
     PM = 180 + phase[f_c_index]
 
-    print ("%s, %s, %s", (gain_at_f_c, f_c, f_c_index))
-    print ("%s, %s, %s", (phase_at_f_180, f_180, f_180_index))
-
     if plot == 1:
-        plt.subplot(3, 1, 1)
+        plt.figure(1)
         # Plot frequency response
         plt.semilogx(f, 20.0*np.log10(np.abs(plant)), linewidth="3", label='Plant')
         plt.semilogx(f, 20.0*np.log10(np.abs(controller)), linewidth="3",
@@ -90,8 +88,20 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
                      label='Noise Gain')
         plt.semilogx(f, 20.0*np.log10(np.abs(unity)), '--', label='Unity')
     
+        f_0 = wc/(2*pi)
+        gap = 3
+        AdB = 20*np.log10(Kp)
+        plt.semilogx([f_0, f_0], [-3, 15], color="gray")
+        plt.text(f_0, 15+gap, "Cavity pole = %s Hz" %f_0)
+        plt.semilogx([ssa_bw, ssa_bw], [AdB-3, 70], color="gray")
+        plt.text(ssa_bw, 70+gap, "Band limit")
+        plt.semilogx([control_zero, control_zero], [AdB+3, 90], color="gray")
+        plt.text(control_zero, 90+gap, "Controller zero")
+        plt.semilogx([stable_gbw, stable_gbw], [0, 80], color="gray")
+        plt.text(stable_gbw, 80+gap, "0 dB crossing")
+
         title = 'RF Station Analytical %s Configuration' % conf
-        plt.title(title, fontsize=40, y=1.02)
+        plt.title(title, fontsize=30, y=1.02)
         plt.ylabel('Magnitude [dB]', fontsize=30)
         plt.xlabel('Frequency [Hz]', fontsize=30)
         plt.legend(loc='upper right')
@@ -99,12 +109,14 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
         plt.yticks(fontsize=20)
         plt.rc('font', **{'size': 20})
     
-        plt.subplot(3, 1, 2)
+        plt.figure(2)
+        title = 'Bode Plot %s Configuration' % conf
+        plt.subplot(2, 1, 1)
+        plt.title(title, fontsize=30)
         plt.plot(f, gain)
         plt.xscale('log')
         plt.axhline(y=0, color='r', linestyle='--')
         plt.ylabel('Gain [dB]')
-        plt.xlabel('Frequency [Hz]')
         GM_text = 'GM = %.d dB' % int(GM)
         plt.annotate(GM_text, xy=(f_180*1.5, gain[f_180_index]))
         plt.annotate(s='', xy=(f_180, gain[f_180_index]), xytext=(f_180, unity[f_180_index]-1), arrowprops=dict(arrowstyle='<->'))
@@ -112,7 +124,7 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
         plt.annotate(f_c_text,
                      xy=(f_c, 1), xytext=(f_c*1.2, 25), arrowprops=dict(facecolor='black', shrink=0.05))
     
-        plt.subplot(3, 1, 3)
+        plt.subplot(2, 1, 2)
         plt.plot(f, phase)
         plt.xscale('log')
         plt.axhline(y=-180, color='r', linestyle='--')
@@ -124,6 +136,18 @@ def pid(f, s, wc, cavity, ssa_bw = 53000, stable_gbw = 20000, control_zero = 500
         plt.annotate(f_180_text,
                      xy=(f_180, -180), xytext=(f_180*1.2, -100), arrowprops=dict(facecolor='black', shrink=0.05))
     
+        fig, ax = plt.subplots()
+        title = 'Nyquist Plot %s Configuration' % conf
+        plt.title(title, fontsize=30)
+        plt.plot(loop.real, loop.imag)
+        plt.scatter(-1,0,marker='x', c='red')
+        circle = plt.Circle((0, 0), 1, color='grey', fill=False)
+        ax.add_patch(circle)
+        plt.ylim((-2, 2))
+        plt.xlim((-2, 2))
+        plt.ylabel('Imag(loop)')
+        plt.xlabel('Real(loop)')
+
         plt.show()
 
     return plant, controller, loop, noise_gain, gain, phase 
@@ -137,9 +161,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     f = np.linspace(1, 10**6, 10**6)  # Frequency from 1 to 10^6 Hz
-    s = 1j*2.0*np.pi*f  # Laplace operator s=jw=j*2*pi*f
+    f = 10**np.arange(0, 6, 0.01)
+    s = 2j*pi*f  # Laplace operator s=jw=j*2*pi*f
 
-    wc = 104.3  # rad/s. bandwidth? where is this number coming from? from 16.6 Hz cavity bandwidth
+    wc = 104.3  # rad/s. From ~16 cavity bandwidth
     cavity = 1.0/(1.0+s/wc)  # Cavity transfer function. Cavity acts as a low pass filter
 
     if args.f == 'lpf':
@@ -147,10 +172,10 @@ if __name__ == "__main__":
     elif args.f == 'pid':
         configurations = ['nominal', 'high', 'hobicat']
         for conf in configurations:
-            print ("%s Configuration", conf)
+            print ("Configuration: ", conf)
             with open("%s.json" % conf, "r") as read_file:
                 data = json.load(read_file)
-            stable_gbw = data['stable_gbw']
+            stable_gbw = data['stable_gbw'] # zero-db crossing
             ssa_bw = data['ssa_bw']
             control_zero = data['control_zero']
             pid(f, s, wc, cavity, ssa_bw, stable_gbw, control_zero, conf, 1)
