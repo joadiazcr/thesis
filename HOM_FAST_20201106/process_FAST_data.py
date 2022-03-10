@@ -5,6 +5,7 @@ import scipy.io as sio
 import csv
 import pandas as pd
 import seaborn as sns
+from scipy.integrate import trapz 
 
 
 date = 'AllData_2021-02-18-'
@@ -165,12 +166,12 @@ def plot_raw_CMHOMs(data, mode, s):
 
         fig2, axs2 = plt.subplots(figsize=(7, 6))
         for cmhom in range(0, 8):
-            time = np.arange(0, len(CMHOMs[cmhom][0]), 1) - 200 
+            time = (np.arange(0, len(CMHOMs[cmhom][0]), 1) - 200) * 0.125 # 8MHz sample rate. T=0.125 us
             axs2.plot(time, CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
             axs2.legend(fontsize=12)
             axs2.set_xlabel('Time ' + r'$[\mu s]$', fontsize=14)
             axs2.set_ylabel('HOM Signal (V)', fontsize=14)
-            axs2.set_xlim(0,550)
+            axs2.set_xlim(0,550 * 0.125)
             plt.xticks(fontsize=12)
             plt.yticks(fontsize=12)
 
@@ -324,15 +325,6 @@ def process_CMHOM_data(data, s):
             if (cmhom-8) % 3 == 0:
                 axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_ylabel('HOM Signal (V)')
 
-
-    # save to csv file
-    data = pd.read_csv(csv_file)
-    new_row = [shift,main_time,main_bunches,main_charge,main_shots,V125,H125,slac_loc] # time,bunches,pC_b,shots
-    new_row = np.append(new_row,cmhoms_pk_bsd_mean)
-    new_row = pd.DataFrame([new_row], columns=data.columns)
-    data = data.append(new_row, ignore_index=True)
-    data.to_csv(csv_file,index=False,)
-
     print('cmhoms_peak_based_mean = ')
     to_print=''
     for x in cmhoms_pk_bsd_mean:
@@ -346,11 +338,72 @@ def process_CMHOM_data(data, s):
 
     fig1.set_size_inches((15.5, 8))
     fig2.set_size_inches((15.5, 8))
-    if s:
+    if False: # if s:
         fig1.savefig(main_time + '_SLAC.png', dpi=500)
-        fig2.savefig(main_time + '_FNAL.png', dpi=500)        
+        fig2.savefig(main_time + '_FNAL.png', dpi=500)  
+           
+        # save to csv file
+        data = pd.read_csv(csv_file)
+        new_row = [shift,main_time,main_bunches,main_charge,main_shots,V125,H125,slac_loc] # time,bunches,pC_b,shots
+        new_row = np.append(new_row,cmhoms_pk_bsd_mean)
+        new_row = pd.DataFrame([new_row], columns=data.columns)
+        data = data.append(new_row, ignore_index=True)
+        data.to_csv(csv_file,index=False,)      
+        
     plt.legend()
     plt.show()
+
+
+
+
+
+
+def integral_CMHOM(data, s):
+    x = np.linspace(0, np.pi, 50)
+    y = np.sin(x)
+    int = trapz(y,x)
+    print(int)
+    plt.plot(x,y)
+    plt.show()
+    exit()
+    
+    CMHOMs = data['CMHOMs']
+    num_CMHOMs = CMHOMs.shape[0]
+    reps = CMHOMs.shape[1]
+
+    cmhoms_int_bsd_mean = np.zeros(num_CMHOMs)
+    cmhoms_int_bsd_std = np.zeros(num_CMHOMs)
+    for cmhom in range(0, num_CMHOMs):
+        cmhoms_int_bsd = np.zeros(reps)
+        for rep in range(0, reps):
+            cmhom_baseln_a = CMHOMs[cmhom][rep][100:200]
+            cmhom_baseln_b = CMHOMs[cmhom][rep][1000:1500]
+            cmhom_baseln = np.mean(np.concatenate((cmhom_baseln_a, cmhom_baseln_b)))
+            cmhom_based = CMHOMs[cmhom][rep] - cmhom_baseln
+            if cmhom < 12:
+                cmhoms_int_bsd[rep] = np.max(cmhom_based) #trapz(cmhom_based,x)
+            elif cmhom >=12:
+                cmhoms_int_bsd[rep] = np.min(cmhom_based)
+        cmhoms_int_bsd_mean[cmhom] = np.mean(cmhoms_int_bsd)
+        cmhoms_int_bsd_std[cmhom] = np.std(cmhoms_int_bsd)
+
+    print('cmhoms_peak_based_mean = ')
+    to_print=''
+    for x in cmhoms_int_bsd_mean:
+        to_print = to_print + ',' + str(x)
+    print(to_print)
+    print('cmhoms_peak_based_std = ')
+    to_print=''
+    for x in cmhoms_int_bsd_std:
+        to_print = to_print + ',' + str(x)
+    print(to_print)
+
+
+
+
+
+
+
 
 
 def V101_HOM(data_file):
@@ -806,6 +859,8 @@ if __name__ == "__main__":
                         help='Plot charge vs CMHOM')
     parser.add_argument('-cccmhom', action="store_true",
                         help='Plot corrector current vs CMHOM')
+    parser.add_argument('-intcmhom', action="store_true",
+                        help='Calculate integrals of CM HOM signals')
     parser.add_argument('-s', action="store_true",
                         help='Save plot')
     parser.add_argument('-m', metavar='mode', dest='mode', type=int,
@@ -881,3 +936,6 @@ if __name__ == "__main__":
         plot_raw_CMHOMs(data, args.mode, args.s)
     if args.pcmhom:
         process_CMHOM_data(data, args.s)
+    if args.intcmhom:
+        integral_CMHOM(data, args.s)
+        exit()
