@@ -7,19 +7,20 @@ import pandas as pd
 import seaborn as sns
 
 
-date = 'AllData_2020-11-20-'
-shift = 3
+date = 'AllData_2021-02-18-'
+shift = 6
 #csv_file = "HOM_FAST/shift3_20201120/cmhoms_peaks.csv"
-csv_file = "HOM_FAST/shift4_20201203/cmhoms_peaks.csv"
+#csv_file = "HOM_FAST_20201106/shift4_20201203/test.csv"
+csv_file = "HOM_FAST_20201106/shift6_20210218/cmhoms_peaks.csv"
 main_shots = 300
 main_charge = 250
 main_bunches = 50
-main_amp = 1
-V125 = 3.84
-H125 = 0.96
-main_time = '23-48-49'
-slac_loc = "SLAC Chassis Dwstr"
-fnal_loc = "FNAL Chassis Upstr"
+main_amp = 2
+V125 = 4.343
+H125 = 0.978
+main_time = '18-45-27'
+slac_loc = "SLAC Chassis Upstr"
+fnal_loc = "FNAL Chassis Dwnstr"
 
 file_to_process = date + main_time + '.mat'
 main_title = ('CM2 ' + str(main_amp) + ' amplifier, ' + str(main_charge) + ' pC, ' + str(main_bunches) + 'b, V125=' + str(V125) + ' H125=' + str(H125) + ', 1st shot\n' +
@@ -91,12 +92,11 @@ def plot_BPMMags(data, mode):
     plt.show()
 
 
-def plot_BPM(data, mode):
-    print("Plotting BPM data")
-    BPMs = data['BPMs']
+def plot_BPM(data, mode, bpm_type):
+    print("Plotting %s data" % bpm_type)
+    BPMs = data[bpm_type]
     num_BPMs = BPMs.shape[0]
     reps = BPMs.shape[1]
-    reps = 10
     points = BPMs.shape[2]
     print('Num BPMs = ', num_BPMs)
     print('BPMs Repetitions = ', reps)
@@ -111,6 +111,7 @@ def plot_BPM(data, mode):
         for rep in range(0, reps):
             plt.plot(BPMs[mode-1][rep])
     plt.title(title)
+    plt.grid(True)
     plt.show()
 
 
@@ -161,19 +162,33 @@ def plot_raw_CMHOMs(data, mode, s):
             axs[1].set_ylabel('HOM Signal (V)')
             axs[1].set_title(fnal_loc)
             axs[1].set_xlim(200,750)
+
+        fig2, axs2 = plt.subplots(figsize=(7, 6))
+        for cmhom in range(0, 8):
+            time = np.arange(0, len(CMHOMs[cmhom][0]), 1) - 200 
+            axs2.plot(time, CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
+            axs2.legend(fontsize=12)
+            axs2.set_xlabel('Time ' + r'$[\mu s]$', fontsize=14)
+            axs2.set_ylabel('HOM Signal (V)', fontsize=14)
+            axs2.set_xlim(0,550)
+            plt.xticks(fontsize=12)
+            plt.yticks(fontsize=12)
+
     else:
         title = 'CMHOM ' + str(mode)
+        fig, axs = plt.subplots(1, 1)
+        fig.suptitle(title, fontsize=16)  # Hardcoded title
         for rep in range(0, reps):
-            plt.plot(CMHOMs[mode-1][rep])
+            axs.plot(CMHOMs[mode-1][rep])
 
     fig.set_size_inches((15.5, 8))
     if s:
         fig.savefig(main_time + '_first.png', dpi=500)
     plt.show()
 
-def process_BPM_data(data):
+def process_BPM_data(data, bpm):
     print("Processing BPM data")
-    BPMs = data['BPMs']
+    BPMs = data[bpm]
     num_BPMs = BPMs.shape[0]
     reps = BPMs.shape[1]
     points = BPMs.shape[2]
@@ -185,33 +200,37 @@ def process_BPM_data(data):
     BPMend = 50
 
     bpm_means = np.zeros(num_BPMs)
-    for bpm in range(0,num_BPMs):
+    #for i in range(0,num_BPMs):
+    for i in range(0,1):
         bpm_rep_mean = np.zeros(reps)
         for rep in range(0,reps):
-            bpm_rep_mean[rep] = np.mean(BPMs[bpm][rep][BPMstart:BPMend])
-        bpm_means[bpm] = np.mean(bpm_rep_mean)
+            bpm_rep_mean[rep] = np.mean(BPMs[i][rep][BPMstart:BPMend])
+            print(bpm_rep_mean[rep])
+        exit()
+        bpm_means[i] = np.mean(bpm_rep_mean)
     print(bpm_means)
 
-    cc1_pos = 2.79763  # meters
-    cc2_pos = 5.506526  # meters
-    ccLen = 1.0  # meters
+    if bpm == "BPMs":
+        cc1_pos = 2.79763  # meters
+        cc2_pos = 5.506526  # meters
+        ccLen = 1.0  # meters
 
-    bpm_means_h = bpm_means[0:][::2] # Horizontal BPMs
-    bpm_means_h = [x / 1000 for x in bpm_means_h]
-    bpm_means_v = bpm_means[1:][::2] # Vertical BPMs
-    bpm_means_v = [x / 1000 for x in bpm_means_v]
-    plt.plot(data['bpmPos'][0:6], bpm_means_h[0:6], 'o-')
-    plt.xlabel('Beamline Position (m)')
-    plt.ylabel('Position (mm)')
-    plt.xlim([0, 10])
-    plt.ylim([-15, 15])
-    plt.vlines(cc1_pos - (ccLen/2.0), -15, 15)
-    plt.vlines(cc1_pos + (ccLen/2.0), -15, 15)
-    plt.vlines(cc2_pos - (ccLen/2.0), -15, 15)
-    plt.vlines(cc2_pos + (ccLen/2.0), -15, 15)
-    plt.text(cc1_pos , -14, 'CC1', ha='center')
-    plt.text(cc2_pos, -14, 'CC2', ha='center')
-    plt.show()
+        bpm_means_h = bpm_means[0:][::2] # Horizontal BPMs
+        bpm_means_h = [x / 1000 for x in bpm_means_h]
+        bpm_means_v = bpm_means[1:][::2] # Vertical BPMs
+        bpm_means_v = [x / 1000 for x in bpm_means_v]
+        plt.plot(data['bpmPos'][0:6], bpm_means_h[0:6], 'o-')
+        plt.xlabel('Beamline Position (m)')
+        plt.ylabel('Position (mm)')
+        plt.xlim([0, 10])
+        plt.ylim([-15, 15])
+        plt.vlines(cc1_pos - (ccLen/2.0), -15, 15)
+        plt.vlines(cc1_pos + (ccLen/2.0), -15, 15)
+        plt.vlines(cc2_pos - (ccLen/2.0), -15, 15)
+        plt.vlines(cc2_pos + (ccLen/2.0), -15, 15)
+        plt.text(cc1_pos , -14, 'CC1', ha='center')
+        plt.text(cc2_pos, -14, 'CC2', ha='center')
+        plt.show()
 
 
 def process_HOM_data(data):
@@ -314,8 +333,16 @@ def process_CMHOM_data(data, s):
     data = data.append(new_row, ignore_index=True)
     data.to_csv(csv_file,index=False,)
 
-    print('cmhoms_peak_based_mean = ', cmhoms_pk_bsd_mean)
-    print('cmhoms_peak_based_std = ', cmhoms_pk_bsd_std)
+    print('cmhoms_peak_based_mean = ')
+    to_print=''
+    for x in cmhoms_pk_bsd_mean:
+        to_print = to_print + ',' + str(x)
+    print(to_print)
+    print('cmhoms_peak_based_std = ')
+    to_print=''
+    for x in cmhoms_pk_bsd_std:
+        to_print = to_print + ',' + str(x)
+    print(to_print)
 
     fig1.set_size_inches((15.5, 8))
     fig2.set_size_inches((15.5, 8))
@@ -363,21 +390,62 @@ def V101_HOM(data_file):
 
 
 def CMHOM_125(data_file):
-    df = pd.read_csv("HOM_FAST/shift4_20201203/cmhoms_peaks.csv")
+    df = pd.read_csv(data_file)
     cavs = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8']
 
-    h_upstr_250_50 = df[df['V125']==4.3][df['slac_loc']=='SLAC Chassis Upstr'][df['pC_b']==250][df['bunches']==50]
-    h_upstr_250_50 = h_upstr_250_50.sort_values(by=['H125'])
-    for cav in cavs:
-        plt.plot(h_upstr_250_50['H125'].to_numpy(), h_upstr_250_50[cav].to_numpy(), '--o',label=cav)
-    plt.ylim(bottom=0.0)
-    plt.xlabel('H125 Magnet Current (A)', fontsize=20)
-    plt.ylabel('HOM Signal Peak (|V|)', fontsize=20)
-    plt.title('SLAC Chassis Upstream, 250 pC, 50 b, 1 Ampl, V125=4.3 A', fontsize=20)  # Hardcoded title
-    plt.legend(loc='upper right', fontsize=14)
-    plt.tick_params(labelsize=14)
-    plt.grid(True)
-    plt.show()
+    # For shift #6
+    #for loc in ['Upstr', 'Dwnstr']:
+    #    for bc in [125,250,400,600]:
+    #        print("Plotting " + loc + str(bc) + " pB/b")
+    #        plt.figure(figsize=(7, 6))
+    #        plt.rc('font', weight='bold')
+    #        data_frame = df[df['H125']==0.0][df['slac_loc']==loc][df['pC_b']==bc][df['bunches']==50]
+    #        data_frame = data_frame.sort_values(by=['V125'])
+    #        for cav in cavs:
+    #            hom = data_frame[cav+'_mean'].to_numpy() * np.power(10,data_frame['slac_atten']*2/20)
+    #            plt.plot(data_frame['V125'].to_numpy(), hom, '--o',label=cav)
+    #        plt.ylim(bottom=0.0)
+    #        plt.xlabel('V125 Magnet Current from reference (A)', fontsize=16, fontweight='bold')
+    #        plt.ylabel('HOM Signal Peak (|V|)', fontsize=16, fontweight='bold')
+    #        #plt.title('Downstream, 600 pC, 50 b, 1 Ampl, H125=0.978 A (reference)', fontsize=20)  # Hardcoded title
+    #        plt.legend(loc=9, fontsize=14)
+    #        plt.tick_params(labelsize=14)
+    #        plt.locator_params(axis="x", nbins=7)
+    #        plt.grid(True)
+    #        plt.show()
+    #exit()
+
+    # For shift 3 & 4
+    for magnet in ['V125', 'H125']:
+        for loc in ['Dwstr', 'Upstr']:
+            for bunches in [50,1]:
+                plt.figure(figsize=(7, 6))
+                plt.rc('font', weight='bold')
+                plot_name = magnet + "_CMHOM_" + loc + "_250_" + str(bunches) + ".png"
+                print("File name: " + plot_name)
+
+                ref = 4.3 if magnet == 'H125' else 0.96
+                ref_mag = 'V125' if magnet =='H125' else 'H125'
+                locc = 'SLAC Chassis Dwstr' if loc == 'Dwstr' else 'SLAC Chassis Upstr'
+                data = df[df[ref_mag]==ref][df['slac_loc']==locc][df['pC_b']==250][df['bunches']==bunches]
+                data = data.sort_values(by=[magnet])
+                for cav in cavs:
+                    try:
+                        plt.plot(data[magnet].to_numpy(), data[cav].to_numpy(), '--o',label=cav)
+                    except:
+                        print("No data")
+                plt.ylim(bottom=0.0)
+                plt.xlabel(magnet + ' Magnet Current (A)', fontsize=16, fontweight='bold')
+                plt.ylabel('HOM Signal Peak (|V|)', fontsize=16, fontweight='bold')
+                #plt.title('SLAC Chassis Downstream, 250 pC, 50 b, 1 Ampl, V125=4.3 A', fontsize=20)  # Hardcoded title
+                plt.legend(fontsize=14)
+                plt.tick_params(labelsize=14)
+                plt.locator_params(axis="x", nbins=7)
+                plt.grid(True)
+                plt.show()
+
+
+    exit()
 
     h_dwstr_250_50 = df[df['V125']==4.3][df['slac_loc']=='SLAC Chassis Dwstr'][df['pC_b']==250][df['bunches']==50]
     h_dwstr_250_50 = h_dwstr_250_50.sort_values(by=['H125'])
@@ -709,21 +777,27 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--file', dest='data_file', required=True,
                         help='File with data to be processed/plotted')
     parser.add_argument('-hom', action="store_true",
-                        help='Plot HOM data')
+                        help='Plot Capture Cavities (CC) HOM raw data')
     parser.add_argument('-cmhom', action="store_true",
-                        help='Plot CMHOM data')
+                        help='Plot CMHOM raw data')
     parser.add_argument('-bpmmag', action="store_true",
-                        help='Plot BPM magnets data')
+                        help='Plot BPM magnets raw data')
     parser.add_argument('-bpm', action="store_true",
-                        help='Plot BPM data')
+                        help='Plot BPM raw data')
+    parser.add_argument('-lebpm', action="store_true",
+                        help='Plot LEBPM raw data')
+    parser.add_argument('-hebpm', action="store_true",
+                        help='Plot HEBPM raw data')
     parser.add_argument('-tor', action="store_true",
-                        help='Plot toroid data')
-    parser.add_argument('-p', action="store_true",
-                        help='Process HOM data')
+                        help='Plot toroid raw data')
+    parser.add_argument('-phom', action="store_true",
+                        help='Process HOM data: Remove baseline and calculate peak mean and std')
     parser.add_argument('-pcmhom', action="store_true",
-                        help='Process CMHOM data')
+                        help='Process CMHOM data: Remove baseline and calculate peak mean and std')
     parser.add_argument('-pbpm', action="store_true",
-                        help='Process BPM data')
+                        help='Process BPM data: Plot Beamline Position Vs BPM average reading')
+    parser.add_argument('-plebpm', action="store_true",
+                        help='Process LEBPM data: Plot Beamline Position Vs BPM average reading')
     parser.add_argument('-vh', action="store_true",
                         help='Plot V/H101 vs HOMs')
     parser.add_argument('-vb', action="store_true",
@@ -731,7 +805,7 @@ if __name__ == "__main__":
     parser.add_argument('-ccm', action="store_true",
                         help='Plot charge vs CMHOM')
     parser.add_argument('-cccmhom', action="store_true",
-                        help='Plot correcotr current vs CMHOM')
+                        help='Plot corrector current vs CMHOM')
     parser.add_argument('-s', action="store_true",
                         help='Save plot')
     parser.add_argument('-m', metavar='mode', dest='mode', type=int,
@@ -749,7 +823,6 @@ if __name__ == "__main__":
     if args.ccm:
         charge_CMHOM_pd(args.data_file)
         exit()
-
     if args.cccmhom:
         CMHOM_125(args.data_file)
         exit()
@@ -774,18 +847,34 @@ if __name__ == "__main__":
                 'B124PH', 'B124PV', 'B125PH', 'B125PV',
                 ]
     data['BPMsList'] = BPMsList
+    LEBPMsList = ['B101PH', 'B101PV', 'B102PH', 'B102PV',
+                'B103PH', 'B103PV', 'B104PH', 'B104PV',
+                'B106PH', 'B106PV', 'B107PH', 'B107PV',
+                'B111PH', 'B111PV', 'B113PH', 'B113PV',
+                'B117PH', 'B117PV', 'B118PH', 'B118PV',
+                'B120PH', 'B120PV', 'B121PH', 'B121PV',
+                'B122PH', 'B122PV', 'B123PH', 'B123PV',
+                'B124PH', 'B124PV', 'B125PH', 'B125PV',
+                'B130PH', 'B130PV']
+    data['LEBPMsList'] = LEBPMsList
     
     basic_file_info(data)
-    if args.p:
+    if args.phom:
         process_HOM_data(data)
     if args.pbpm:
-        process_BPM_data(data)
+        process_BPM_data(data, "BPMs")
+    if args.plebpm:
+        process_BPM_data(data, "LEBPMs")
     if args.tor:
         plot_toroids(data, args.mode)
     if args.bpmmag:
         plot_BPMMags(data, args.mode)
     if args.bpm:
-        plot_BPM(data, args.mode)
+        plot_BPM(data, args.mode, 'BPMs')
+    if args.hebpm:
+        plot_BPM(data, args.mode, 'HEBPMs')
+    if args.lebpm:
+        plot_BPM(data, args.mode, 'LEBPMs')
     if args.hom:
         plot_raw_HOMs(data, args.mode)
     if args.cmhom:
