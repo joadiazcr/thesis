@@ -168,12 +168,13 @@ def plot_raw_CMHOMs(data, mode, s):
         for cmhom in range(0, 8):
             time = (np.arange(0, len(CMHOMs[cmhom][0]), 1) - 200) * 0.125 # 8MHz sample rate. T=0.125 us
             axs2.plot(time, CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
-            axs2.legend(fontsize=12)
-            axs2.set_xlabel('Time ' + r'$[\mu s]$', fontsize=14)
-            axs2.set_ylabel('HOM Signal (V)', fontsize=14)
+            legend_properties = {'weight':'bold'}
+            axs2.legend(fontsize=14, prop=legend_properties)
+            axs2.set_xlabel('Time ' + r'$\mathbf{[\mu s]}$', fontsize=16, fontweight='bold')
+            axs2.set_ylabel('HOM Signal (V)', fontsize=16, fontweight='bold')
             axs2.set_xlim(0,550 * 0.125)
-            plt.xticks(fontsize=12)
-            plt.yticks(fontsize=12)
+            plt.xticks(fontsize=14, fontweight='bold')
+            plt.yticks(fontsize=14, fontweight='bold')
 
     else:
         title = 'CMHOM ' + str(mode)
@@ -359,13 +360,13 @@ def process_CMHOM_data(data, s):
 
 
 def integral_CMHOM(data, s):
-    x = np.linspace(0, np.pi, 50)
-    y = np.sin(x)
-    int = trapz(y,x)
-    print(int)
-    plt.plot(x,y)
-    plt.show()
-    exit()
+    #x = np.linspace(0, np.pi, 50)
+    #y = np.sin(x)
+    #print = trapz(y,x)
+    #print(int)
+    #plt.plot(x,y)
+    #plt.show()
+    #exit()
     
     CMHOMs = data['CMHOMs']
     num_CMHOMs = CMHOMs.shape[0]
@@ -381,9 +382,9 @@ def integral_CMHOM(data, s):
             cmhom_baseln = np.mean(np.concatenate((cmhom_baseln_a, cmhom_baseln_b)))
             cmhom_based = CMHOMs[cmhom][rep] - cmhom_baseln
             if cmhom < 12:
-                cmhoms_int_bsd[rep] = np.max(cmhom_based) #trapz(cmhom_based,x)
+                cmhoms_int_bsd[rep] = trapz(cmhom_based,dx=0.125e-6)
             elif cmhom >=12:
-                cmhoms_int_bsd[rep] = np.min(cmhom_based)
+                cmhoms_int_bsd[rep] = trapz(cmhom_based,dx=0.125e-6) * (-1)
         cmhoms_int_bsd_mean[cmhom] = np.mean(cmhoms_int_bsd)
         cmhoms_int_bsd_std[cmhom] = np.std(cmhoms_int_bsd)
 
@@ -447,26 +448,26 @@ def CMHOM_125(data_file):
     cavs = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8']
 
     # For shift #6
-    #for loc in ['Upstr', 'Dwnstr']:
-    #    for bc in [125,250,400,600]:
-    #        print("Plotting " + loc + str(bc) + " pB/b")
-    #        plt.figure(figsize=(7, 6))
-    #        plt.rc('font', weight='bold')
-    #        data_frame = df[df['H125']==0.0][df['slac_loc']==loc][df['pC_b']==bc][df['bunches']==50]
-    #        data_frame = data_frame.sort_values(by=['V125'])
-    #        for cav in cavs:
-    #            hom = data_frame[cav+'_mean'].to_numpy() * np.power(10,data_frame['slac_atten']*2/20)
-    #            plt.plot(data_frame['V125'].to_numpy(), hom, '--o',label=cav)
-    #        plt.ylim(bottom=0.0)
-    #        plt.xlabel('V125 Magnet Current from reference (A)', fontsize=16, fontweight='bold')
-    #        plt.ylabel('HOM Signal Peak (|V|)', fontsize=16, fontweight='bold')
-    #        #plt.title('Downstream, 600 pC, 50 b, 1 Ampl, H125=0.978 A (reference)', fontsize=20)  # Hardcoded title
-    #        plt.legend(loc=9, fontsize=14)
-    #        plt.tick_params(labelsize=14)
-    #        plt.locator_params(axis="x", nbins=7)
-    #        plt.grid(True)
-    #        plt.show()
-    #exit()
+    for loc in ['Upstr', 'Dwnstr']:
+        for bc in [125,250,400,600]:
+            print("Plotting " + loc + str(bc) + " pB/b")
+            plt.figure(figsize=(7, 6))
+            plt.rc('font', weight='bold')
+            data_frame = df[df['H125']==0.0][df['slac_loc']==loc][df['pC_b']==bc][df['bunches']==50]
+            data_frame = data_frame.sort_values(by=['V125'])
+            for cav in cavs:
+                hom = data_frame[cav+'_mean'].to_numpy() * np.power(10,data_frame['slac_atten']*2/20)
+                plt.plot(data_frame['V125'].to_numpy(), hom* 1e6, '--o',label=cav)
+            plt.ylim(bottom=0.0)
+            plt.xlabel('V125 Magnet Current from reference (A)', fontsize=16, fontweight='bold')
+            plt.ylabel('HOM Signal Integral (V' + u'\xb7' + r'$\mu s)$', fontsize=16, fontweight='bold')
+            #plt.title('Downstream, 600 pC, 50 b, 1 Ampl, H125=0.978 A (reference)', fontsize=20)  # Hardcoded title
+            plt.legend(loc=9, fontsize=14)
+            plt.tick_params(labelsize=14)
+            plt.locator_params(axis="x", nbins=7)
+            plt.grid(True)
+            plt.show()
+    exit()
 
     # For shift 3 & 4
     for magnet in ['V125', 'H125']:
