@@ -6,9 +6,9 @@ import os
 import argparse
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-
 import cavity_model
 
+plt.rcParams.update({'font.size': 40})
 
 def meas_noise(psd, bw, grad, k):
     rms = 1.5 * np.sqrt(0.5 * 10**(psd/10.0) * bw) * grad * k
@@ -18,25 +18,25 @@ def meas_noise(psd, bw, grad, k):
 def plot(t, cav_v, sp, fwd, nom_grad, show_fwd=False, show_lim=False,
          x_lim=None, y_lim=None, plot_type='amp'):
     if plot_type == 'amp':
-        plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+        plt.plot(t, np.abs(cav_v), 'b-', linewidth=2, label='Cavity Voltage')
         plt.plot(t, sp * np.ones(len(t)), 'k--', linewidth=2, label='Set point')
         if show_fwd:
-            plt.plot(t, np.abs(fwd[:, 0]), 'r-', linewidth=2, label='U (Forward)')
+            plt.plot(t, np.abs(fwd[:, 0]), 'r-', linewidth=2, label='Drive')
         plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
 
     if plot_type == 'phase':
-        plt.plot(t, np.angle(cav_v), 'b-', linewidth=2, label='Cavity Voltage (Probe)')
+        plt.plot(t, np.angle(cav_v), 'b-', linewidth=2, label='Cavity Voltage')
         plt.plot(t, sp * np.zeros(len(t)), 'k--', linewidth=2, label='Set point')
         if show_fwd:
-            plt.plot(t, np.angle(fwd[:, 0]), 'r-', linewidth=2, label='U (Forward)')
+            plt.plot(t, np.angle(fwd[:, 0]), 'r-', linewidth=2, label='Drive')
         plt.ylabel('Phase [degress]')
 
     if plot_type == 'cartesian':
-        plt.plot(t, np.real(cav_v), 'b-', linewidth=2, label='Cavity Voltage Real(Probe)')
-        plt.plot(t, np.imag(cav_v), 'b--', linewidth=2, label='Cavity Voltage Imag(Probe)')
+        plt.plot(t, np.real(cav_v), 'b-', linewidth=2, label='Cavity Voltage Real')
+        plt.plot(t, np.imag(cav_v), 'b--', linewidth=2, label='Cavity Voltage Imag')
         if show_fwd:
-            plt.plot(t, np.real(fwd[:, 0]), 'r-', linewidth=2, label='U Real (Forward)')
-            plt.plot(t, np.imag(fwd[:, 0]), 'r--', linewidth=2, label='U Imag (Forward)')
+            plt.plot(t, np.real(fwd[:, 0]), 'r-', linewidth=2, label='Drive Real')
+            plt.plot(t, np.imag(fwd[:, 0]), 'r--', linewidth=2, label='Drive Imag')
         plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
     
     if show_lim:
@@ -56,7 +56,9 @@ def plot(t, cav_v, sp, fwd, nom_grad, show_fwd=False, show_lim=False,
         plt.ylim(y_lim)
 
     plt.xlabel('Time [ms]')
-    plt.legend()
+    plt.xticks()
+    plt.yticks()
+    #plt.legend(fontsize=30)
     plt.show()
 
 
@@ -194,41 +196,46 @@ if __name__ == "__main__":
     feedforward = args.feed_forward
 
     # Some settings for the simulation
-    tf = 0.02 # Total simulation time
+    tf = 0.03 # Total simulation time
     nom_grad = 1.6301e7 # V/m. Nominal gradient of LCLS-II cavity
     noise_psd = -149
     beam_start = 0.015
-    beam_end = 0.017
+    beam_end = 0.025
     detuning_start = 0.0
-    detuning_end = 0.03
+    detuning_end = tf
 
     if noise and not beam and not detuning:
-        tf = 0.03 # Total simulation time
+        #tf = 0.03 # Total simulation time
         t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        t = t*1000
         plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True)
-        plot(t, cav_v, sp, fwd, nom_grad, show_lim=True, x_lim=[0.012, 0.02], y_lim=[nom_grad-10e3, nom_grad+10e3])
-        plot(t, cav_v, sp, fwd, nom_grad, plot_type='phase', show_lim=True, x_lim=[0.012, 0.02], y_lim=[-6.25e-2, 6.25e-2])
+        plot(t, cav_v, sp, fwd, nom_grad, show_lim=True, x_lim=[19.5, 23.5], y_lim=[nom_grad-10e3, nom_grad+10e3])
+        plot(t, cav_v, sp, fwd, nom_grad, plot_type='phase', show_lim=True, x_lim=[19.5, 23.5], y_lim=[-6.25e-2, 6.25e-2])
     
     if beam and not noise and not detuning:
+        print("Preparing data with beam")
         t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        t = t*1000
         plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True)
-        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[0.0145, 0.0175], y_lim=[14e6, 23e6])
-        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[0.01495, 0.0153], y_lim=[sp-10e3, sp+10e3], show_lim=True)
-        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[0.01495, 0.017], y_lim=[sp-10e3, sp+10e3], show_lim=True)
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[14.5, 25.5], y_lim=[14e6, 23e6])
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[14.95, 25.5], y_lim=[sp-10e3, sp+10e3], show_lim=True)
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[14.95, 17], y_lim=[sp-10e3, sp+10e3], show_lim=True)
 
     if detuning:
-        tf = 0.03 # Total simulation time
+        #tf = 0.03 # Total simulation time
         beam_start = 0.015
         beam_end = 0.025
         t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        t = t*1000
         plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True)
-        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, plot_type='cartesian', x_lim=[0.01495, 0.025])
-        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, x_lim=[0.01495, 0.025], y_lim=[sp-10e3, sp+10e3], show_lim=True)
-        plot(t, cav_v, sp, fwd, nom_grad, plot_type='phase', show_lim=True, x_lim=[0.01495, 0.025], y_lim=[-6.25e-2, 6.25e-2])
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True, plot_type='cartesian', x_lim=[15, 30])
+        plot(t, cav_v, sp, fwd, nom_grad, show_fwd=False, x_lim=[14, 30], y_lim=[sp-10e3, sp+10e3], show_lim=True)
+        plot(t, cav_v, sp, fwd, nom_grad, plot_type='phase', show_lim=True, x_lim=[15, 30], y_lim=[-6.25e-2, 6.25e-2])
 
     if not beam and not noise and not detuning:
         tf = 0.03 # Total simulation time
         t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start, beam_end, detuning, detuning_start, detuning_end)    
+        t = t*1000
         plot(t, cav_v, sp, fwd, nom_grad, show_fwd=True)
         plot(t, cav_v, sp, fwd, nom_grad, show_lim=True, x_lim=[0.01, 0.012], y_lim=[nom_grad-20e3, nom_grad+20e3])
 
