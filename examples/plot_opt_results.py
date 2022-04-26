@@ -1,4 +1,3 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 
@@ -14,13 +13,12 @@ def load_data(file):
         elif 'Solution' in line:
             opt_gain = line.split('[')[1]
             opt_gain = opt_gain.split(']')[0]
-        elif 'Solution' not in line and  '0-dB' not in line:
+        elif 'Solution' not in line and '0-dB' not in line:
             gain_s.append(float(line.split()[0]))
             rmse_s.append(float(line.split()[1]))
-    print(gain_s)
-    print(rmse_s)
     print(opt_gain)
     return method, gain_s, rmse_s
+
 
 def plot_opt_results(method, gain_s, rmse_s):
     print('Plotting results...')
@@ -29,6 +27,7 @@ def plot_opt_results(method, gain_s, rmse_s):
     plt.xlabel('0-dB crossing [Hz]')
     plt.ylabel('RMSE [V]')
     plt.show()
+
 
 if __name__ == "__main__":
     des = 'Plot results of optimization'
