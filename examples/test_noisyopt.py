@@ -9,7 +9,7 @@ import re
 from noisyopt import minimizeCompass
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-from cavity_step_response import cavity_step
+from cavity_step_response import cavity_step as cav_stp
 from pi_gain_analysis import error, rmse
 
 
@@ -89,10 +89,10 @@ def cavity_step_rmse(s_gbw, *args):
     detuning_end = tf
 
     # 1. Simulate cavity response with given gains
-    t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step(tf, nom_grad,
-                                           feedforward, noise, noise_psd,
-                                           beam, beam_start, beam_end, detuning,
-                                           detuning_start, detuning_end, stable_gbw=s_gbw)
+    args = [tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start,
+            beam_end, detuning, detuning_start, detuning_end]
+    t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cav_stp(args,
+                                                   stable_gbw=s_gbw)
 
     # 2. Calculate error
     err = error(sp, np.abs(cav_v))
@@ -102,8 +102,8 @@ def cavity_step_rmse(s_gbw, *args):
 
     end = datetime.now()
     exec_time = end - start
-    log(logfile, '{:.6f}'.format(s_gbw[0]) + '\t{:.6f}'.format(rms_err) + '\t' + str(exec_time),
-        stdout=True)
+    log(logfile, '{:.6f}'.format(s_gbw[0]) + '\t{:.6f}'.format(rms_err) + '\t'
+        + str(exec_time), stdout=True)
     return rms_err
 
 
@@ -135,15 +135,15 @@ def load_data(file):
             gain_s.append(float(line.split()[0]))
             rmse_s.append(float(line.split()[1]))
             try:
-                time_s.append(line.split()[2])
-            except:
+                time_s.append(line.split()[3])
+            except IndexError:
                 print('No time infor available')
 
     return method, gain_s, rmse_s, time_s
 
 
 if __name__ == "__main__":
-    des = 'script to test optimization algorithms'
+    des = 'Script to test optimization algorithms'
     parser = argparse.ArgumentParser(description=des)
     parser.add_argument('-f', "--func",
                         choices=['quad_func', 'cavity_step_rmse'],
@@ -179,7 +179,8 @@ if __name__ == "__main__":
         print('Optimizing function %s' % args.func)
 
         # Create log file
-        logfile_name = start_time.strftime('test_noisyopt_results' + '%Y%m%d_%H%M%S')
+        logfile_name = start_time.strftime('test_noisyopt_results' +
+                                           '%Y%m%d_%H%M%S')
         print("Log file: %s" % logfile_name)
         logfile = open(logfile_name, "w")
         log(logfile, 'Optimization method: noisyopt', stdout=False)
