@@ -7,7 +7,7 @@ import datetime
 import json
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-import cavity_step_response
+from cavity_step_response import cavity_step as cav_stp
 
 plt.rcParams.update({'font.size': 12})
 global steady_state_start
@@ -109,8 +109,10 @@ if __name__ == "__main__":
     # control_zero=[12500, 10000, 5000]
     stable_gbws = [70000]
     control_zero = [17500]
-    # stable_gbws=[40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000]
-    # control_zero=[10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000]
+    # stable_gbws=[40000, 40000, 40000, 40000, 40000, 40000, 40000, 40000,
+    # 40000, 40000]
+    # control_zero=[10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000,
+    # 10000, 10000]
 
     if not args.path:
 
@@ -141,7 +143,7 @@ if __name__ == "__main__":
             "control_zero": control_zero
         }
         log(data_dir, simulation_settings)
-        
+
         args = [tf, nom_grad, feedforward, noise, noise_psd, beam, beam_start,
                 beam_end, detuning, detuning_start, detuning_end]
 
@@ -154,8 +156,8 @@ if __name__ == "__main__":
         ki_s = []
         for s_gbw in stable_gbws:
             print("Generating data for K_p = ", s_gbw)
-            t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cavity_step_response.cavity_step(args,
-                                                                                    stable_gbw=s_gbw)
+            t, cav_v, sp, fwd, Kp_a, Ki_a, e, ie = cav_stp(args,
+                                                           stable_gbw=s_gbw)
             ei = error_integral(t, sp, cav_v)
             cav_v_s.append(cav_v)
             fwd_s.append(fwd[:, 0])
@@ -172,7 +174,8 @@ if __name__ == "__main__":
             errors.append(error(sp, np.abs(cav_v_s[gain])))
             final_ie.append(ie_s[gain][-1])
             maximum_error.append(max_error(sp, cav_v_s[gain]))
-            print("maximum error for", stable_gbws[gain],  "is ", maximum_error[gain])
+            print("maximum error for", stable_gbws[gain],  "is ",
+                  maximum_error[gain])
 
         # Save waveform results
         with open(data_dir + '/data.npy', 'wb') as f:
@@ -232,14 +235,15 @@ if __name__ == "__main__":
         rmse_s.append(rmse(errors[gain]))
         std_s.append(np.std(errors[gain][steady_state_start:-1]))
         from sklearn.metrics import mean_squared_error
-        l = len(cav_v_s[gain][steady_state_start:-1])
-        mse_sk = mean_squared_error(np.ones(l)*sp, np.abs(cav_v_s[gain][steady_state_start:-1]))
+        length = len(cav_v_s[gain][steady_state_start:-1])
+        mse_sk = mean_squared_error(np.ones(length)*sp,
+                                    np.abs(cav_v_s[gain][steady_state_start:-1]))
         rmse_sk.append(np.sqrt(mse_sk))
 
     fig, axs = plt.subplots(2, 3)
     # some plot settings
     t = t * 1000  # seconds to miliseconds
-    x_lim = [steady_state_start / 1000, tf * 1000]  # Time window in miliseconds
+    x_lim = [steady_state_start / 1000, tf * 1000]  # Time window in msec
     y_lim = [nom_grad-6e3, nom_grad+6e3]
     for p in range(len(stable_gbws)):
         axs[0, 0].set_title('Cavity Probe')
@@ -249,10 +253,11 @@ if __name__ == "__main__":
         axs[0, 0].legend(loc='lower right')
 
         axs[1, 0].set_title('Cavity Probe Steady State')
-        axs[1, 0].plot(t, np.abs(cav_v_s[p]), label=str(round(stable_gbws[p], 3))
-                                              + "--" + str(round(rmse_s[p] ,3))
-                                              + "--" + str(round(std_s[p] ,3))
-                                              + "---" + str(round(rmse_sk[p], 3)))
+        axs[1, 0].plot(t, np.abs(cav_v_s[p]),
+                       label=str(round(stable_gbws[p], 3))
+                       + "--" + str(round(rmse_s[p], 3))
+                       + "--" + str(round(std_s[p], 3))
+                       + "---" + str(round(rmse_sk[p], 3)))
         axs[1, 0].plot(t, nom_grad*np.ones(len(t))*(1 + amp_stability),
                        linewidth=2, color='m')
         axs[1, 0].plot(t, nom_grad*np.ones(len(t))*(1 - amp_stability),
@@ -283,7 +288,8 @@ if __name__ == "__main__":
 
         # axs[0, 2].set_title('Forward/control power')
         axs[0, 2].set_title('Error')
-        # axs[0, 2].plot(t, (np.abs(fwd_s[p])**2.0) / 1036, label=stable_gbws[p])  # power
+        # axs[0, 2].plot(t, (np.abs(fwd_s[p])**2.0) / 1036,
+        # label=stable_gbws[p])  # power
         axs[0, 2].plot(t, (np.abs(errors[p])), label=stable_gbws[p])  # Error
         # axs[0, 2].set_ylabel('Power [W]')
         axs[0, 2].legend(loc='lower right')
