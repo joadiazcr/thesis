@@ -11,6 +11,23 @@ from cavity_step_response import cavity_step
 from pi_gain_analysis import error, rmse
 
 
+# Example from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html 
+def test_function():
+    print('\nSLSQP')
+    def fun(x):
+        print(x)
+        y = (x[0] - 1)**2 + (x[1] - 2.5)**2
+        return y
+    x0 = [2, 0]
+    cons = ({'type': 'ineq', 'fun': lambda x:  x[0] - 2 * x[1] + 2},
+            {'type': 'ineq', 'fun': lambda x: -x[0] - 2 * x[1] + 6},
+            {'type': 'ineq', 'fun': lambda x: -x[0] + 2 * x[1] + 2})
+    bnds = ((0, None), (0, None))
+    res = minimize(fun, x0, method='SLSQP', bounds=bnds,
+                   constraints=cons, options={'disp': True})
+    print('Solution =', res.x)
+
+
 def cavity_step_rmse(s_gbw):
     start = datetime.now()
     # Some settings for the simulation
