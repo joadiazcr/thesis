@@ -135,7 +135,7 @@ def load_data(file):
             gain_s.append(float(line.split()[0]))
             rmse_s.append(float(line.split()[1]))
             try:
-                time_s.append(line.split()[3])
+                time_s.append(line.split()[2])
             except IndexError:
                 print('No time infor available')
 
