@@ -225,8 +225,7 @@ if __name__ == "__main__":
 
     # time points
     t = np.linspace(0, 0.2, 1000)  # 0.2 seconds
-
-    bw = 104  # where is this number coming from? Cavity bw 16Hz
+    bw = 104  # r/s. Cavity bw 16Hz
 
     # values for the different modes come from
     # https://github.com/BerkeleyLab/Global-Feedback-Simulator/blob/release/source/configfiles/LCLS-II/LCLS-II_accelerator.json
@@ -359,23 +358,28 @@ if __name__ == "__main__":
             v_pi_d = step_response(args_pi, t)
 
             # plot results for magnitude
-            lns += ax1.plot(t, np.abs(v_pi_d), label='Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f+')')
+            label = 'Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f+')'
+            lns += ax1.plot(t, np.abs(v_pi_d), label=label)
             # plot results for real and imaginary parts
-            lns3 += ax4.plot(t, np.real(v_pi_d), label='Cavity Field Real ('+r'$\Delta f_1$ = %s Hz' % f+')')
-            lns3 += ax4.plot(t, np.imag(v_pi_d), label='Cavity Field Imag ('+r'$\Delta f_1$ = %s Hz' % f+')')
+            label = 'Cavity Field Real ('+r'$\Delta f_1$ = %s Hz' % f+')'
+            lns3 += ax4.plot(t, np.real(v_pi_d), label=label)
+            label = 'Cavity Field Imag ('+r'$\Delta f_1$ = %s Hz' % f+')'
+            lns3 += ax4.plot(t, np.imag(v_pi_d), label=label)
             # plot results for phase
-            ax3.plot(t, np.unwrap(np.angle(v_pi_d)), label='Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f + ')')
+            label = 'Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f + ')'
+            ax3.plot(t, np.unwrap(np.angle(v_pi_d)), label=label)
 
             delta_f = np.ones(nt)*f
             delta_f[0:int(nt*0.4)] = 0.0
-            lns += ax2.plot(t, delta_f, '-%s' % colors[idx], label=r'$\Delta f_1$ = %s Hz' % f)
+            label = r'$\Delta f_1$ = %s Hz' % f
+            lns += ax2.plot(t, delta_f, '-%s' % colors[idx], label=label)
 
         drive_in = np.ones(nt)
         drive_in[0:int(nt*0.1)] = 0.0
 
         lns += ax1.plot(t, drive_in*max(np.abs(v_pi_d)), label='Drive')
-        labs = [l.get_label() for l in lns]
-        labs3 = [l.get_label() for l in lns3]
+        labs = [ln.get_label() for ln in lns]
+        labs3 = [ln.get_label() for ln in lns3]
 
         ax3.set_title("Cavity Step Response: 1 pC Beam step")
         plt.title("Cavity Step Response: 1 pC Beam step")
