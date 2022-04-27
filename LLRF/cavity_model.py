@@ -9,11 +9,14 @@ import json
 # based on CMOC Equation 3.13
 # Function that returns dS/dt
 
+
 # Cavity model with Kg and Ib real numbers
 def model(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg, Ib,
           foffset, Kg_s=0.0, foffset_s=0.0):
-    if t < Kg_s: Kg = 0.0
-    if t < foffset_s: foffset = 0.0
+    if t < Kg_s:
+        Kg = 0.0
+    if t < foffset_s:
+        foffset = 0.0
 
     Rg = RoverQ * Qg
     Kdrive = 2 * np.sqrt(Rg)
@@ -35,11 +38,12 @@ def model(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg, Ib,
 
 # Cavity model with Kg complex number test
 def model_complex(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg_r, Kg_i, Ib,
-          foffset, Kg_s=0.0, foffset_s=0.0):
-    if t < Kg_s: 
+                  foffset, Kg_s=0.0, foffset_s=0.0):
+    if t < Kg_s:
         Kg_r = 0.0
         Kg_i = 0.0
-    if t < foffset_s: foffset = 0.0
+    if t < foffset_s:
+        foffset = 0.0
 
     Rg = RoverQ * Qg
     Kdrive = 2 * np.sqrt(Rg)
@@ -54,8 +58,10 @@ def model_complex(z, t, RoverQ, Qg, Q0, Qprobe, bw, Kg_r, Kg_i, Ib,
     yr, yi, theta = z
 
     dthetadt = w_d
-    dydt_r = (a * Kg_r - b * Ib)*np.cos(theta) - (c * yr) + a * Kg_i * np.sin(theta)
-    dydt_i = -(a * Kg_r - b * Ib)*np.sin(theta) - (c * yi) + a * Kg_i * np.cos(theta)
+    dydt_r = (a * Kg_r - b * Ib)*np.cos(theta)\
+        - (c * yr) + a * Kg_i * np.sin(theta)
+    dydt_i = -(a * Kg_r - b * Ib)*np.sin(theta)\
+             - (c * yi) + a * Kg_i * np.cos(theta)
     return [dydt_r, dydt_i, dthetadt]
 
 
@@ -98,6 +104,7 @@ def ssa_lpf_complex(y0, t, u, ssa_bw):
     dydt = dydt_r + dydt_i * 1.0j
     return dydt
 
+
 # SSA saturation model
 def ssa_sat(c, v_in):
     v_out = v_in * ((1.0 + (np.abs(v_in)**c))**(-1.0/c))
@@ -108,7 +115,8 @@ def ssa_sat(c, v_in):
 def ssa(v_last, v_in, ssa_bw, c, t, power_max):
     v_in = v_in/np.sqrt(power_max)
     v_last = v_last/np.sqrt(power_max)
-    v_out = odeintz(ssa_lpf_complex, v_last, [0, t], args=(v_in, ssa_bw))  # Low-pass filter
+    # Low-pass filter
+    v_out = odeintz(ssa_lpf_complex, v_last, [0, t], args=(v_in, ssa_bw))
     v_out_sat = ssa_sat(c, v_out[-1])  # Saturation
     v_out_sat = v_out_sat * np.sqrt(power_max)
     return v_out_sat, v_out[-1] * np.sqrt(power_max)
@@ -117,34 +125,36 @@ def ssa(v_last, v_in, ssa_bw, c, t, power_max):
 # PI Controller
 def PI(Kp, Ki, sp, x_in, sum_error, delta_t):
     error = (sp - x_in)
-    sat = 78.83 # check where this saturation is comming from
+    sat = 78.83  # check where this saturation is comming from
     sum_error = sum_error + error * delta_t * Ki
     scale = np.abs(sum_error)/sat
-    if scale > 1.0: 
-        sum_error = sum_error/scale 
+    if scale > 1.0:
+        sum_error = sum_error/scale
     u = sum_error + Kp * error
     scale = np.abs(u)/sat
-    if scale > 1.0: 
+    if scale > 1.0:
         u = u/scale
     return u, error, np.abs(sum_error)
 
+
 # PI Controller
 def PI_v(Kp, Ki, sp, v0, sum_init, delta_t, clip):
-        error = sp - v0
-        sum_init = sum_init + error * delta_t
+    error = sp - v0
+    sum_init = sum_init + error * delta_t
 
-        if Kp == 0.0 and Ki == 0.0:
-               u = step[i]
-        else:
-               u = Kp * error + Ki * sum_init
-        # clip inputs to -50% to 100%
-        if u >= clip:
-               u = clip
-               sum_init = sum_init - error *delta_t
-        if u <= 0.0:
-               u = 0.0
-               sum_init = sum_init - error *delta_t
-        return u, error, sum_init
+    if Kp == 0.0 and Ki == 0.0:
+        u = step[i]
+    else:
+        u = Kp * error + Ki * sum_init
+    # clip inputs to -50% to 100%
+    if u >= clip:
+        u = clip
+        sum_init = sum_init - error * delta_t
+    if u <= 0.0:
+        u = 0.0
+        sum_init = sum_init - error * delta_t
+    return u, error, sum_init
+
 
 def phase():
     t = np.linspace(0, 1, 1000)
@@ -160,8 +170,10 @@ def phase():
 
 
 def gauss_noise(signal, mu, sigma):
-    signal = signal + np.random.normal(mu, sigma) + 1j * np.random.normal(mu, sigma)
+    signal = signal + np.random.normal(mu, sigma) +\
+             1j * np.random.normal(mu, sigma)
     return signal
+
 
 def odeintz(func, z0, t, **kwargs):
     """An odeint-like function for complex valued differential equations."""
@@ -197,7 +209,8 @@ def odeintz(func, z0, t, **kwargs):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Cavity Simulation')
-    parser.add_argument('-f', type=str, choices=['stp', 'pi', 'ssa', 'phase', 'pi_unit', 'gn'],
+    parser.add_argument('-f', type=str, choices=['stp', 'pi', 'ssa',
+                                                 'phase', 'pi_unit', 'gn'],
                         help='Function: spt for Step Response,\
                         pi for PI controller,\
                         ssa for SSA saturation curve,\
@@ -215,7 +228,8 @@ if __name__ == "__main__":
 
     bw = 104  # where is this number coming from? Cavity bw 16Hz
 
-    # values for the different modes come from https://github.com/BerkeleyLab/Global-Feedback-Simulator/blob/release/source/configfiles/LCLS-II/LCLS-II_accelerator.json
+    # values for the different modes come from
+    # https://github.com/BerkeleyLab/Global-Feedback-Simulator/blob/release/source/configfiles/LCLS-II/LCLS-II_accelerator.json
     # Pi mode
     RoverQ_pi = 1036.0
     Qg_pi = 4.0 * 10**7
@@ -236,13 +250,17 @@ if __name__ == "__main__":
     Qprobe_pi9 = 2.0 * 10**9
 
     if args.f == 'stp':
-        # solve ODEs for cavity response to a step funtion on the RF drive signal
+        # Solve ODEs for cavity response to a step funtion
+        # on the RF drive signal
         foffset = 0
         Kg = 1
         Ib = 0
-        args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, 0, Ib, foffset)
-        args_8pi9 = (RoverQ_8pi9, Qg_8pi9, Q0_8pi9, Qprobe_8pi9, bw, Kg, 0, Ib, foffset)
-        args_pi9 = (RoverQ_pi9, Qg_pi9, Q0_pi9, Qprobe_pi9, bw, Kg, 0, Ib, foffset)
+        args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi,
+                   bw, Kg, 0, Ib, foffset)
+        args_8pi9 = (RoverQ_8pi9, Qg_8pi9, Q0_8pi9, Qprobe_8pi9,
+                     bw, Kg, 0, Ib, foffset)
+        args_pi9 = (RoverQ_pi9, Qg_pi9, Q0_pi9, Qprobe_pi9,
+                    bw, Kg, 0, Ib, foffset)
         v_pi = step_response(args_pi, t)
         v_8pi9 = step_response(args_8pi9, t)
         v_pi9 = step_response(args_pi9, t)
@@ -251,25 +269,31 @@ if __name__ == "__main__":
         plt.plot(t, np.abs(v_pi), label='pi')
         plt.vlines(1.0/bw, 0, np.abs(v_pi[-1]), 'r', '--')
         plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg, 0, t[-1], 'r', '--')
-        plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg*(1.0-np.exp(-1)), 0, t[-1], 'r', '--')
-        print ("Pi Drive coupling = %s", max(np.abs(v_pi)))
+        plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg*(1.0-np.exp(-1)), 0,
+                   t[-1], 'r', '--')
+        print("Pi Drive coupling = %s", max(np.abs(v_pi)))
         plt.plot(t, np.abs(v_8pi9), label='8pi/9')
-        print ("8pi/9 Drive coupling = %s", max(np.abs(v_8pi9)))
+        print("8pi/9 Drive coupling = %s", max(np.abs(v_8pi9)))
         plt.plot(t, np.abs(v_pi9), label='pi/9')
-        print ("pi/9 Drive coupling = %s", max(np.abs(v_pi9)))
+        print("pi/9 Drive coupling = %s", max(np.abs(v_pi9)))
         plt.title("Cavity Step Response: Drive @ "+r'$\omega_{\mu}$')
         plt.xlabel('Time [s]')
         plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
         plt.legend()
         plt.show()
 
-        # Solve ODEs for cavity response to a step funtion on the beam input signal
+        # Solve ODEs for cavity response to a step funtion
+        # on the beam input signal
         Kg = 0
-        # current equivalent to 1pC of charge. Step size is 1us for CMOC simulations
+        # current equivalent to 1pC of charge.
+        # Step size is 1us for CMOC simulations
         Ib = 1 * 10 ** (-12) / (10**(-6))
-        args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, 0, Ib, foffset)
-        args_8pi9 = (RoverQ_8pi9, Qg_8pi9, Q0_8pi9, Qprobe_8pi9, bw, Kg, 0, Ib, foffset)
-        args_pi9 = (RoverQ_pi9, Qg_pi9, Q0_pi9, Qprobe_pi9, bw, Kg, 0, Ib, foffset)
+        args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi,
+                   bw, Kg, 0, Ib, foffset)
+        args_8pi9 = (RoverQ_8pi9, Qg_8pi9, Q0_8pi9, Qprobe_8pi9,
+                     bw, Kg, 0, Ib, foffset)
+        args_pi9 = (RoverQ_pi9, Qg_pi9, Q0_pi9, Qprobe_pi9,
+                    bw, Kg, 0, Ib, foffset)
         v_pi_I = step_response(args_pi, t)
         v_8pi9_I = step_response(args_8pi9, t)
         v_pi9_I = step_response(args_pi9, t)
@@ -279,11 +303,11 @@ if __name__ == "__main__":
         plt.vlines(1.0/bw, 0, np.abs(v_pi_I[-1]), 'r', '--')
         plt.hlines(Ql_pi*RoverQ_pi*Ib, 0, t[-1], 'r', '--')
         plt.hlines(Ql_pi*RoverQ_pi*Ib*(1.0-np.exp(-1)), 0, t[-1], 'r', '--')
-        print ("Pi beam coupling = %s", max(np.abs(v_pi_I)))
+        print("Pi beam coupling = %s", max(np.abs(v_pi_I)))
         plt.plot(t, np.abs(v_8pi9_I), label='8pi/9')
-        print ("8Pi/9 beam coupling = %s", max(np.abs(v_8pi9_I)))
+        print("8Pi/9 beam coupling = %s", max(np.abs(v_8pi9_I)))
         plt.plot(t, np.abs(v_pi9_I), label='pi/9')
-        print ("Pi beam coupling = %s", max(np.abs(v_pi9_I)))
+        print("Pi beam coupling = %s", max(np.abs(v_pi9_I)))
         plt.title("Cavity Step Response: 1 pC Beam step")
         plt.xlabel('Time [s]')
         plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
@@ -300,7 +324,8 @@ if __name__ == "__main__":
             v_pi_f = step_response(args_pi, t)
 
             # plot results
-            plt.plot(np.real(v_pi_f), np.imag(v_pi_f), label='basis offset=%s Hz' % f)
+            plt.plot(np.real(v_pi_f), np.imag(v_pi_f),
+                     label='basis offset=%s Hz' % f)
 
         plt.title("Cavity Step Response: Drive @ "+r'$\omega_{ref}$')
         plt.xlabel(r'$\Re (\vec V_{\mu})$ [V]')
@@ -329,7 +354,8 @@ if __name__ == "__main__":
         colors = ['c', 'm', 'g']
 
         for idx, f in enumerate(foffset):
-            args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi, bw, Kg, 0, Ib, f, Kg_s, foffset_s)
+            args_pi = (RoverQ_pi, Qg_pi, Q0_pi, Qprobe_pi,
+                       bw, Kg, 0, Ib, f, Kg_s, foffset_s)
             v_pi_d = step_response(args_pi, t)
 
             # plot results for magnitude
@@ -367,8 +393,9 @@ if __name__ == "__main__":
     if args.f == 'pi':
         f = np.linspace(1, 10**6, 10**6)  # Frequency from 1 to 10^6 Hz
         s = 1j*2.0*np.pi*f  # Laplace operator s=jw=j*2*pi*f
-        wc = 104.3  # rad/s. bandwidth? where is this number coming from? from 16.6 Hz cavity bandwidth
-        cavity = 1.0/(1.0+s/wc)  # Cavity transfer function. Cavity acts as a low pass filter
+        wc = 104.3  # rad/s. From 16.6 Hz cavity bandwidth
+        # Cavity transfer function. Cavity acts as a low pass filter
+        cavity = 1.0/(1.0+s/wc)
         configurations = ['nominal', 'high', 'hobicat']
         for conf in configurations:
             with open("%s.json" % conf, "r") as read_file:
@@ -391,9 +418,8 @@ if __name__ == "__main__":
         nt = len(trang)  # Number of points
         sp_step = int(nt*0.1)
 
-
         drive = np.zeros(nt)
-        e =  np.zeros(nt)
+        e = np.zeros(nt)
         ie = np.zeros(nt)
 
         for i in range(nt):
@@ -402,13 +428,12 @@ if __name__ == "__main__":
                 drive[i] = u
                 e[i] = error
                 ie[i] = sum_init
-        
+
         plt.plot(trang, drive, label='Drive')
         plt.plot(trang, e, label='Error')
         plt.plot(trang, ie, label='Integrator State')
         plt.legend()
         plt.show()
-
 
     if args.f == 'ssa':
         c = 5.0
@@ -426,8 +451,10 @@ if __name__ == "__main__":
         v_last = 0.0
 
         for m in range(1, nt):
-            v_out[m], v_last = ssa(v_last, v_in, ssa_bw * 2.0 * np.pi, c, Tstep, power_max)  # SSA model (lpf + sat)
-        plt.plot(trang, np.abs(v_out), label='SSA Output', linewidth=3) 
+            # SSA model (lpf + sat)
+            v_out[m], v_last = ssa(v_last, v_in, ssa_bw * 2.0 * np.pi,
+                                   c, Tstep, power_max)
+        plt.plot(trang, np.abs(v_out), label='SSA Output', linewidth=3)
         plt.ylim([0, 50])
         plt.ticklabel_format(style='sci', axis='x', scilimits=(1, 0))
         plt.title('SSA Test', fontsize=40, y=1.01)
@@ -451,7 +478,7 @@ if __name__ == "__main__":
                 v_out[i] = ssa_sat(c, v_in[i])
                 if v_out[i].real >= (top_drive/100.0):
                     V_sat = v_in[i]
-                    print (V_sat)
+                    print(V_sat)
                     break
 
         plt.legend()
@@ -470,4 +497,5 @@ if __name__ == "__main__":
         plt.plot(t, signal)
         plt.show()
 
-# I want to reproduce bode plots and stability analysis for nominal, high, critical and optimal(Using rezas method) configurations
+# I want to reproduce bode plots and stability analysis for
+# nominal, high, critical and optimal(Using rezas method) configurations
