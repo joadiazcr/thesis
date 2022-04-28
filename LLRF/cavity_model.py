@@ -264,17 +264,19 @@ if __name__ == "__main__":
         v_8pi9 = step_response(args_8pi9, t)
         v_pi9 = step_response(args_pi9, t)
 
+        print("Pi Drive coupling = %s", max(np.abs(v_pi)))
+        print("8pi/9 Drive coupling = %s", max(np.abs(v_8pi9)))
+        print("pi/9 Drive coupling = %s", max(np.abs(v_pi9)))
+
         # plot results
         plt.plot(t, np.abs(v_pi), label='pi')
+        plt.plot(t, np.abs(v_8pi9), label='8pi/9')
+        plt.plot(t, np.abs(v_pi9), label='pi/9')
+        # Time constant. (1-1/e) of the final value.
         plt.vlines(1.0/bw, 0, np.abs(v_pi[-1]), 'r', '--')
         plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg, 0, t[-1], 'r', '--')
         plt.hlines(2.0 * np.sqrt(RoverQ_pi * Qg_pi)*Kg*(1.0-np.exp(-1)), 0,
                    t[-1], 'r', '--')
-        print("Pi Drive coupling = %s", max(np.abs(v_pi)))
-        plt.plot(t, np.abs(v_8pi9), label='8pi/9')
-        print("8pi/9 Drive coupling = %s", max(np.abs(v_8pi9)))
-        plt.plot(t, np.abs(v_pi9), label='pi/9')
-        print("pi/9 Drive coupling = %s", max(np.abs(v_pi9)))
         plt.title("Cavity Step Response: Drive @ "+r'$\omega_{\mu}$')
         plt.xlabel('Time [s]')
         plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
@@ -297,16 +299,18 @@ if __name__ == "__main__":
         v_8pi9_I = step_response(args_8pi9, t)
         v_pi9_I = step_response(args_pi9, t)
 
+        print("Pi beam coupling = %s", max(np.abs(v_pi_I)))
+        print("8Pi/9 beam coupling = %s", max(np.abs(v_8pi9_I)))
+        print("Pi beam coupling = %s", max(np.abs(v_pi9_I)))
+
         # plot results
         plt.plot(t, np.abs(v_pi_I), label='pi')
+        plt.plot(t, np.abs(v_8pi9_I), label='8pi/9')
+        plt.plot(t, np.abs(v_pi9_I), label='pi/9')
+        # Time constant. (1-1/e) of the final value.
         plt.vlines(1.0/bw, 0, np.abs(v_pi_I[-1]), 'r', '--')
         plt.hlines(Ql_pi*RoverQ_pi*Ib, 0, t[-1], 'r', '--')
         plt.hlines(Ql_pi*RoverQ_pi*Ib*(1.0-np.exp(-1)), 0, t[-1], 'r', '--')
-        print("Pi beam coupling = %s", max(np.abs(v_pi_I)))
-        plt.plot(t, np.abs(v_8pi9_I), label='8pi/9')
-        print("8Pi/9 beam coupling = %s", max(np.abs(v_8pi9_I)))
-        plt.plot(t, np.abs(v_pi9_I), label='pi/9')
-        print("Pi beam coupling = %s", max(np.abs(v_pi9_I)))
         plt.title("Cavity Step Response: 1 pC Beam step")
         plt.xlabel('Time [s]')
         plt.ylabel(r'$| \vec V_{\rm acc}|$ [V]')
@@ -349,6 +353,7 @@ if __name__ == "__main__":
         fig3, ax4 = plt.subplots()
         ax2 = ax1.twinx()
         lns = []
+        lns2 = []
         lns3 = []
         colors = ['c', 'm', 'g']
 
@@ -367,7 +372,7 @@ if __name__ == "__main__":
             lns3 += ax4.plot(t, np.imag(v_pi_d), label=label)
             # plot results for phase
             label = 'Cavity Field ('+r'$\Delta f_1$ = %s Hz' % f + ')'
-            ax3.plot(t, np.unwrap(np.angle(v_pi_d)), label=label)
+            lns2 += ax3.plot(t, np.unwrap(np.angle(v_pi_d)), label=label)
 
             delta_f = np.ones(nt)*f
             delta_f[0:int(nt*0.4)] = 0.0
@@ -379,18 +384,24 @@ if __name__ == "__main__":
 
         lns += ax1.plot(t, drive_in*max(np.abs(v_pi_d)), label='Drive')
         labs = [ln.get_label() for ln in lns]
+        labs2 = [ln.get_label() for ln in lns2]
         labs3 = [ln.get_label() for ln in lns3]
 
-        ax3.set_title("Cavity Step Response: 1 pC Beam step")
-        plt.title("Cavity Step Response: 1 pC Beam step")
+        ax1.set_title("Cavity test: Fill and step on detune frequency. \
+            Amplitude")
+        ax3.set_title("Cavity test: Fill and step on detune frequency. \
+            Phase")
+        ax4.set_title("Cavity test: Fill and step on detune frequency. \
+                  Real and Imag")
         ax1.set_xlabel('Time [s]')
         ax3.set_xlabel('Time [s]')
         ax3.set_ylabel(r'$\angle \vec V_{\mu}$ [rad]')
         ax2.set_ylabel('Frequency [Hz]')
         ax1.set_ylabel(r'$| \vec V_{\rm acc}|$ [V]')
         ax1.set_ylim(0, 6e5)
-        ax2.set_ylim(0, foffset[1]*1.5)
+        ax2.set_ylim(0, foffset[-1]*1.5)
         ax1.legend(lns, labs, loc=0)
+        ax3.legend(lns2, labs2, loc=0)
         ax4.legend(lns3, labs3, loc=0)
         plt.show()
 
