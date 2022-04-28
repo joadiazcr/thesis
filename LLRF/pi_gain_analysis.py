@@ -1,12 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
 import os
 import argparse
 import datetime
 import json
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 from cavity_step_response import cavity_step as cav_stp
 
 plt.rcParams.update({'font.size': 12})
@@ -236,8 +233,8 @@ if __name__ == "__main__":
         std_s.append(np.std(errors[gain][steady_state_start:-1]))
         from sklearn.metrics import mean_squared_error
         length = len(cav_v_s[gain][steady_state_start:-1])
-        mse_sk = mean_squared_error(np.ones(length)*sp,
-                                    np.abs(cav_v_s[gain][steady_state_start:-1]))
+        est = np.abs(cav_v_s[gain][steady_state_start:-1])
+        mse_sk = mean_squared_error(np.ones(length)*sp, est)
         rmse_sk.append(np.sqrt(mse_sk))
 
     fig, axs = plt.subplots(2, 3)

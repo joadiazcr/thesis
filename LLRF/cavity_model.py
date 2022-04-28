@@ -143,7 +143,7 @@ def PI_v(Kp, Ki, sp, v0, sum_init, delta_t, clip):
     sum_init = sum_init + error * delta_t
 
     if Kp == 0.0 and Ki == 0.0:
-        u = step[i]
+        u = sp
     else:
         u = Kp * error + Ki * sum_init
     # clip inputs to -50% to 100%
