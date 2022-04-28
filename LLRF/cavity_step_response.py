@@ -1,11 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
-import sys
-import os
 import argparse
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import cavity_model
 
 plt.rcParams.update({'font.size': 40})
@@ -94,7 +90,7 @@ def cavity_step(args, stable_gbw=20000, control_zero=5000):
     Ib = 0
     f_os = 0.0
     # [Hz] Noise shaping filter. Not yet implemented
-    noise_bw = 53000.0 * 2.0 * np.pi
+    # noise_bw = 53000.0 * 2.0 * np.pi
 
     # SSA parameters
     c = 5.0
