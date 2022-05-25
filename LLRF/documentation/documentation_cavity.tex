@@ -131,6 +131,17 @@ Equations \ref{eq: d0_dt}, \ref{eq: dSr_dt_reduced_S_K_complex} and \ref{eq: dSi
 }
 
 \newpage
+\section{Equivalent of a low-pass filter}
+The time domain equation for an RC low-pass filter is:
+
+\begin{equation}
+  v_{out}(t) = v_{in}(t)-RC\frac{dv_{out}}{dt} 
+\label{eq: RC time domain}
+\end{equation}
+
+Which is of the same form as equation \ref{{eq: dS_dt}}
+
+\newpage
 \begin{thebibliography}{19}   % Use for  1-9  references
 \bibitem{ref:LCLS-II System Simulations}
 LBNL LLRF team, ``LCLS-II System Simulations: Physics,''
