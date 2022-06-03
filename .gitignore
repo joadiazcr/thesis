@@ -13,3 +13,4 @@
 *.backup
 *.swp
 .venv/
+.HOM_FAST/ML/dnn_model/
