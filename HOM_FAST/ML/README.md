@@ -25,6 +25,11 @@ Steps of the training and result analysis
 - Plot test labels and test predictiones vs sample #
 
 ## FAST_NN_training_B.ipynb
-Same as `FAST_NN_training_B.ipynb` except that `B` also uses down stream (DS) HOM data, therefore the dataset has 3600 samples, the train dataset has 2880 samples and the test dataset has 720 samples. Also, it only runs the following keras models to predict `B441PV_std`:
+Same as `FAST_NN_training_A.ipynb` except that `B` also uses down stream (DS) HOM data, therefore the dataset has 3600 samples, the train dataset has 2880 samples and the test dataset has 720 samples. Also, it only runs the following keras models to predict `B441PV_std`:
 - Lineat regression multiple input (c1, ..., c8, V125, DS, US)
 - DNN multiple input (c1, ..., c8, V125, DS, US)
+
+## FAST_NN_training_C.ipynb
+Same as `FAST_NN_training_B.ipynb` except that `C` also uses multiple values of H125 and bunch charges. Therefore, the dataset has 9600 samples, the train dataset has 7680 samples and the test dataset has 1920 samples. It runs the following keras models to predict `B441PV_std`:
+- Lineat regression multiple input (c1, ..., c8, V125, DS, US, bunch charge, H125)
+- DNN multiple input (c1, ..., c8, V125, DS, US, bunch charge, H125)
