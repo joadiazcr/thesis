@@ -1,7 +1,8 @@
 # ML training for HOM data collected at FAST (Fermilab)
 This folder contains the Jupyter notebooks I wrote to train multiple NNs using HOM data collected at the FAST facility at Fermilab.
 ## The data
-The data is save in the file **bpm_big_data_ex_std.plk**. It contains 17600 samples with 228 features.
+The data is save in the file **bpm_big_data_ex_std.plk**. It contains 17600 samples with 228 features.\
+Other data file only has shift6 data, **bpm_big_data_shift4.plk**. It contains 12000 samples with 228 columns.
 ## FAST_NN_training_A.ipynb
 Simple example using a small portion of the data. I am doing this just to make sure the code makes sense. Filter data with bunch charge of 250 pC/b, 50 bunches, horizontal steering magnet at reference (H125=0.0) and up stream (US) HOM data.\
 The filtered dataset has 1800 samples and 15 features.\
@@ -33,3 +34,8 @@ Same as `FAST_NN_training_A.ipynb` except that `B` also uses down stream (DS) HO
 Same as `FAST_NN_training_B.ipynb` except that `C` also uses multiple values of H125 and bunch charges. Therefore, the dataset has 9600 samples, the train dataset has 7680 samples and the test dataset has 1920 samples. It runs the following keras models to predict `B441PV_std`:
 - Lineat regression multiple input (c1, ..., c8, V125, DS, US, bunch charge, H125)
 - DNN multiple input (c1, ..., c8, V125, DS, US, bunch charge, H125)
+
+## FAST_NN_training_D.ipynb
+Similar to `FAST_NN_training_C.ipynb` but only uses data from shift 4 and the inputs are only the HOM signals (c1, ..., c8). Therefore, the dataset has 6000 samples, the train dataset has 4800 samples and the test dataset has 1200 samples. It runs the following keras models to predict `B441PV_std`:
+- Lineat regression multiple input (c1, ..., c8)
+- DNN multiple input (c1, ..., c8)
