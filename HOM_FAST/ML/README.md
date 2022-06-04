@@ -39,3 +39,13 @@ Same as `FAST_NN_training_B.ipynb` except that `C` also uses multiple values of 
 Similar to `FAST_NN_training_C.ipynb` but only uses data from shift 4 and the inputs are only the HOM signals (c1, ..., c8). Therefore, the dataset has 6000 samples, the train dataset has 4800 samples and the test dataset has 1200 samples. It runs the following keras models to predict `B441PV_std`:
 - Lineat regression multiple input (c1, ..., c8)
 - DNN multiple input (c1, ..., c8)
+
+## FAST_NN_training_E.ipynb
+Simple example using a small portion of the data from shift 4. the purpose of this model is to try to predict the little changes between the "shots" under the same configuration. Filter data with bunch charge of 250 pC/b, 50 bunches, horizontal steering magnet at reference (H125=0.0 V), vertical steering magnet at 1.0 V and up stream (US) HOM data.\
+The filtered dataset has 300 samples and 8 features (c1, ..., c8).\
+80-20 split for train and test datasets. Train dataset has 240 samples. Test dataset has 60 samples.\
+I am running the following kera models to predict `B441PV_std`:
+- Linear regression single input (c1)
+- Lineat regression multiple input (c1, ..., c8, V125)
+- DNN single input (c1)
+- DNN multiple input (c1, ..., c8, V125)
