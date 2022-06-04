@@ -1,6 +1,17 @@
 # ML training for HOM data collected at FAST (Fermilab)
 This folder contains the Jupyter notebooks I wrote to train multiple NNs using HOM data collected at the FAST facility at Fermilab.
 ## The data
+The data was collected during 6 shifts of 8 hours each at FAST. 
+
+|Shift|Date      |Device |Pupose              |Methodology|Bunch Charge (pC)|# Bunches|Reps|# Files|Total reps|
+| --- | -------- | ----- | ------------------ |---------- | --------------- |-------- | -- |------ | -------- |
+| 1   |11/06/2020|CC1&CC2|Test SLAC chassis #1|Scan V101  |10/100/225(/2?)  |1,50     |20,100,300|14|
+| 2   |11/12/2020|CC1&CC2|Test SLAC chassis #2|Scan H101  |10/100/225(/2?)  |1,50     |100,300   |23|
+| 3   |11/20/2020|CM2    |Measure HOMs        |Scan V125  |250/100/10       |50,2,1   |100,300   |26|5600
+| 4   |12/03/2020|CM2    |Measure HOMs        |Scan H/V125|250/100          |1,50     |300       |40|12000
+| 5   |02/04/2021|CC1&CC2|                    |Scan V103  |1000/750/500/250 |50       |100,300   |34|
+| 6   |12/18/2021|CM2    |Measure HOMs        |Scan V125  |600/400/250/125  |50       |100,300   |46|9000
+
 The data is save in the file **bpm_big_data_ex_std.plk**. It contains 17600 samples with 228 features.\
 Other data file only has shift6 data, **bpm_big_data_shift4.plk**. It contains 12000 samples with 228 columns.
 ## FAST_NN_training_A.ipynb
