@@ -181,14 +181,14 @@ def create_dataset(data, bpm_means, bpm_mean_means, bpm_vars,
     row.extend(bpm_vars)
 
     if load is True:
-        df = pd.read_pickle('HOM_FAST_20201106/bpm_data_ex.plk')
+        df = pd.read_pickle('HOM_FAST/bpm_data_shift6.plk')
         df_tmp = pd.DataFrame([row], columns=columns)
         df = df.append(df_tmp, ignore_index=True)
     else:
         df = pd.DataFrame([row], columns=columns)
 
     # where to save it usually as a .plk
-    df.to_pickle('HOM_FAST_20201106/bpm_data_ex.plk')
+    df.to_pickle('HOM_FAST/bpm_data_shift6.plk')
     print(df)
 
 
@@ -229,10 +229,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Read list of datafiles to process
-    datafiles = pd.read_csv('HOM_FAST_20201106/list_of_files_shift6.csv')
+    datafiles = pd.read_csv('HOM_FAST/list_of_files_shift6.csv')
     for datafile in range(0, len(datafiles.index)):
         data_file = datafiles['data_file'][datafile]
-        data = sio.loadmat('HOM_FAST_20201106/' + data_file)
+        data = sio.loadmat('HOM_FAST/' + data_file)
         print('processing file #' + str(datafile) + ": " + data_file)
 
         data['connection'] = datafiles['connection'][datafile]
@@ -279,10 +279,10 @@ if __name__ == "__main__":
             load = False
         else:
             load = True
-        create_big_dataset(data, load=load)
+        # create_big_dataset(data, load=load)
 
-    # cmhoms_pk_bsd_mean, cmhoms_pk_bsd_std = process_CMHOM_peaks(data)
-    # bpm_means, bpm_mean_means, bpm_vars = process_BPM_var(data)
-    # plot_BPM_data(data, bpm_means, bpm_mean_means, bpm_vars)
-    # create_dataset(data, bpm_means, bpm_mean_means, bpm_vars,
-    #                cmhoms_pk_bsd_mean, cmhoms_pk_bsd_std, load=True)
+        cmhoms_pk_bsd_mean, cmhoms_pk_bsd_std = process_CMHOM_peaks(data)
+        bpm_means, bpm_mean_means, bpm_vars = process_BPM_var(data)
+        # plot_BPM_data(data, bpm_means, bpm_mean_means, bpm_vars)
+        create_dataset(data, bpm_means, bpm_mean_means, bpm_vars,
+                       cmhoms_pk_bsd_mean, cmhoms_pk_bsd_std, load=load)
