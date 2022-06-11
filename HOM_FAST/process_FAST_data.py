@@ -4,11 +4,9 @@ All functions require a data file as input
 Functions are:
 
 To plot raw data:
-    (-tor)                  plot_toroid
-    (-bpmma)                plot_BPMMags
-    (-bpm, -lebpm, -hebpm)  plot_BPMs
-    (-hom)                  plot_raw_HOMs
-    (-cmom)                 plot_raw_CMHOMs
+    (-pr)   plot_raw_data: Toroids, BPMMags, BPMs,
+                           LEBPMs, HEBPMs, HOMs or CMHOMs
+    (-cmom) plot_raw_CMHOMs
 
 TODO: Finis a nice description of this code
 TODO: cange ardcoded tile of plot_raw_CMOMs
@@ -141,9 +139,9 @@ def plot_raw_HOMs(data, mode):
     plt.show()
 
 
-def plot_raw_CMHOMs(data, mode, s):
+def plot_raw_CMHOMs(data, mode, save, data_file):
     '''
-    Plots CM HOM data from CM2.
+    Plots raw CM HOM data from CM2.
     Only applies for shifts 3 to 6.
     If mode is 0, plots first repetition (shot) for all CM HOMS.
     If mode is not 0, plots all repetitions of CM HOM number <mode>.
@@ -160,26 +158,20 @@ def plot_raw_CMHOMs(data, mode, s):
     print('Points = ', points)
     if mode == 0:
         fig, axs = plt.subplots(1, 2)
-        fig.suptitle(main_title, fontsize=16)  # Hardcoded title
-        for cmhom in range(0, 8):
-            axs[0].plot(CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
-            axs[0].legend()
-            axs[0].set_xlabel('Sample')
-            axs[0].set_ylabel('HOM Signal (V)')
-            axs[0].set_title(slac_loc)
-            axs[0].set_xlim(plot_xlim_l, plot_xlim_h)
-        for cmhom in range(8, num_CMHOMs):
-            axs[1].plot(CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
-            axs[1].legend()
-            axs[1].set_xlabel('Sample')
-            axs[1].set_ylabel('HOM Signal (V)')
-            axs[1].set_title(fnal_loc)
-            axs[1].set_xlim(plot_xlim_l, plot_xlim_h)
+        fig.suptitle(data_file, fontsize=16)
+        for cmhom in range(0, num_CMHOMs):
+            idx = 0 if cmhom < 8 else 1
+            axs[idx].plot(CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
+            axs[idx].legend()
+            axs[idx].set_xlabel('Sample')
+            axs[idx].set_ylabel('HOM Signal (V)')
+            axs[idx].set_title(slac_loc)
+            axs[idx].set_xlim(plot_xlim_l, plot_xlim_h)
 
         fig2, axs2 = plt.subplots(figsize=(7, 6))
         for cmhom in range(0, 8):
             # 8MHz sample rate. T=0.125 us
-            time = (np.arange(0, len(CMHOMs[cmhom][0]), 1) - 350) * 0.125
+            time = (np.arange(0, points, 1) - plot_xlim_l) * 0.125
             axs2.plot(time, CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
             legend_properties = {'weight': 'bold'}
             axs2.legend(fontsize=14, prop=legend_properties)
@@ -193,12 +185,12 @@ def plot_raw_CMHOMs(data, mode, s):
     else:
         title = 'CMHOM ' + str(mode)
         fig, axs = plt.subplots(1, 1)
-        fig.suptitle(title, fontsize=16)  # Hardcoded title
+        fig.suptitle(title, fontsize=16)
         for rep in range(0, reps):
             axs.plot(CMHOMs[mode-1][rep])
 
     fig.set_size_inches((15.5, 8))
-    if s:
+    if save:
         fig.savefig(main_time + '_first.png', dpi=500)
     plt.show()
 
@@ -347,43 +339,36 @@ def process_CMHOM_data(data, s):
                 axs2[int((cmhom - 8) / 3), (cmhom-8) % 3].set_ylabel('HOM Signal (V)')
 
     print('cmhoms_peak_based_mean = ')
-    to_print =''
+    to_print = ''
     for x in cmhoms_pk_bsd_mean:
         to_print = to_print + ',' + str(x)
     print(to_print)
     print('cmhoms_peak_based_std = ')
-    to_print =''
+    to_print = ''
     for x in cmhoms_pk_bsd_std:
         to_print = to_print + ',' + str(x)
     print(to_print)
 
     fig1.set_size_inches((15.5, 8))
     fig2.set_size_inches((15.5, 8))
-    if False: # if s:
+    if False:  # if s:
         fig1.savefig(main_time + '_SLAC.png', dpi=500)
-        fig2.savefig(main_time + '_FNAL.png', dpi=500)  
+        fig2.savefig(main_time + '_FNAL.png', dpi=500)
 
         # save to csv file
         data = pd.read_csv(csv_file)
-        new_row = [shift,main_time,main_bunches,main_charge,main_shots,V125,H125,slac_loc] # time,bunches,pC_b,shots
-        new_row = np.append(new_row,cmhoms_pk_bsd_mean)
+        new_row = [shift, main_time, main_bunches, main_charge,
+                   main_shots, V125, H125, slac_loc]  # time,bunches,pC_b,shots
+        new_row = np.append(new_row, cmhoms_pk_bsd_mean)
         new_row = pd.DataFrame([new_row], columns=data.columns)
         data = data.append(new_row, ignore_index=True)
-        data.to_csv(csv_file,index=False,)      
+        data.to_csv(csv_file, index=False)
 
     plt.legend()
     plt.show()
 
 
 def integral_CMHOM(data, s):
-    #x = np.linspace(0, np.pi, 50)
-    #y = np.sin(x)
-    #print = trapz(y,x)
-    #print(int)
-    #plt.plot(x,y)
-    #plt.show()
-    #exit()
-
     CMHOMs = data['CMHOMs']
     num_CMHOMs = CMHOMs.shape[0]
     reps = CMHOMs.shape[1]
@@ -744,18 +729,19 @@ def charge_CMHOM(data_file):
                 c1_325.append(float(row[16]))
                 c8_325.append(float(row[17]))
 
-    data = {'bunches' : bunches, 'charge' : charge, 'shots' : shots,
-            'c1' : c1, 'c2' : c2, 'c3' : c3, 'c4' : c4,
-            'c5' : c5, 'c6' : c6, 'c7' : c7, 'c8' : c8,
-            'c1_175' : c1_175, 'c8_175' : c8_175,'c1_250' : c1_250,
-            'c8_250' : c8_250, 'c1_325' : c1_325,'c8_325' : c8_325,}
+    data = {'bunches': bunches, 'charge': charge, 'shots': shots,
+            'c1': c1, 'c2': c2, 'c3': c3, 'c4': c4,
+            'c5': c5, 'c6': c6, 'c7': c7, 'c8': c8,
+            'c1_175': c1_175, 'c8_175': c8_175, 'c1_250': c1_250,
+            'c8_250': c8_250, 'c1_325': c1_325, 'c8_325': c8_325}
 
-    df = pd.DataFrame(data,columns=['bunches','charge','shots',
-            'c1','c2','c3','c4','c5','c6','c7','c8',
-            'c1_175','c8_175','c1_250',
-            'c8_250','c1_325','c8_325'])
+    df = pd.DataFrame(data, 
+                      columns=['bunches', 'charge', 'shots',
+                               'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8',
+                               'c1_175', 'c8_175', 'c1_250',
+                               'c8_250', 'c1_325', 'c8_325'])
 
-    #df.plot.scatter(x='charge', y='c1', s=df['bunches'])
+    # df.plot.scatter(x='charge', y='c1', s=df['bunches'])
     sns.catplot(x="charge", y="c1", col='bunches', data=df,label='c1')
     sns.scatterplot(x="charge", y="c2", data=df,label='c2')
     plt.show()
@@ -846,20 +832,8 @@ if __name__ == "__main__":
                         help='File with data to be processed/plotted')
     parser.add_argument('-pr', dest='dev', choices=['Toroids', 'BPMMags', 'BPMs', 'LEBPMs', 'HEBPMs', 'HOMs', 'CMHOMs'],
                         help='Plot raw data of desired device')
-    parser.add_argument('-hom', action="store_true",
-                        help='Plot Capture Cavities (CC) HOM raw data')
     parser.add_argument('-cmhom', action="store_true",
                         help='Plot CMHOM raw data')
-    parser.add_argument('-bpmmag', action="store_true",
-                        help='Plot BPM magnets raw data')
-    parser.add_argument('-bpm', action="store_true",
-                        help='Plot BPM raw data')
-    parser.add_argument('-lebpm', action="store_true",
-                        help='Plot LEBPM raw data')
-    parser.add_argument('-hebpm', action="store_true",
-                        help='Plot HEBPM raw data')
-    parser.add_argument('-tor', action="store_true",
-                        help='Plot toroid raw data')
     parser.add_argument('-phom', action="store_true",
                         help='Process HOM data: Remove baseline and calculate peak mean and std')
     parser.add_argument('-pcmhom', action="store_true",
@@ -940,7 +914,7 @@ if __name__ == "__main__":
     if args.dev:
         plot_raw_data(data, args.dev, args.mode)
     if args.cmhom:
-        plot_raw_CMHOMs(data, args.mode, args.s)
+        plot_raw_CMHOMs(data, args.mode, args.s, args.data_file)
     if args.pcmhom:
         process_CMHOM_data(data, args.s)
     if args.intcmhom:
