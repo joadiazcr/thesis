@@ -1,3 +1,20 @@
+'''
+roup of functions to plot and process raw data from FAST experiments.
+All functions require a data file as input
+Functions are:
+
+To plot raw data:
+    (-tor)                  plot_toroid
+    (-bpmma)                plot_BPMMags
+    (-bpm, -lebpm, -hebpm)  plot_BPMs
+    (-hom)                  plot_raw_HOMs
+    (-cmom)                 plot_raw_CMHOMs
+
+TODO: Finis a nice description of this code
+TODO: cange ardcoded tile of plot_raw_CMOMs
+TODO: combine first four functions. Maybe even te 5t one
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -5,13 +22,13 @@ import scipy.io as sio
 import csv
 import pandas as pd
 import seaborn as sns
-from scipy.integrate import trapz 
+from scipy.integrate import trapz
 
 
 date = 'AllData_2021-02-18-'
 shift = 6
-#csv_file = "HOM_FAST/shift3_20201120/cmhoms_peaks.csv"
-#csv_file = "HOM_FAST_20201106/shift4_20201203/test.csv"
+# csv_file = "HOM_FAST/shift3_20201120/cmhoms_peaks.csv"
+# csv_file = "HOM_FAST_20201106/shift4_20201203/test.csv"
 csv_file = "HOM_FAST_20201106/shift6_20210218/cmhoms_peaks.csv"
 main_shots = 300
 main_charge = 250
@@ -24,9 +41,12 @@ slac_loc = "SLAC Chassis Upstr"
 fnal_loc = "FNAL Chassis Dwnstr"
 
 file_to_process = date + main_time + '.mat'
-main_title = ('CM2 ' + str(main_amp) + ' amplifier, ' + str(main_charge) + ' pC, ' + str(main_bunches) + 'b, V125=' + str(V125) + ' H125=' + str(H125) + ', 1st shot\n' +
-               file_to_process)
-main_title2 = ('CM2 ' + str(main_amp) + ' amplifier, ' + str(main_charge) + ' pC, ' + str(main_bunches) + ' b, V125=' + str(V125) + ' H125=' + str(H125) + ', ' + str(main_shots) + ' shots\n' +
+main_title = ('CM2 ' + str(main_amp) + ' amplifier, ' + str(main_charge) +
+              ' pC, ' + str(main_bunches) + 'b, V125=' + str(V125) +
+              ' H125=' + str(H125) + ', 1st shot\n' + file_to_process)
+main_title2 = ('CM2 ' + str(main_amp) + ' amplifier, ' + str(main_charge) +
+               ' pC, ' + str(main_bunches) + ' b, V125=' + str(V125) +
+               ' H125=' + str(H125) + ', ' + str(main_shots) + ' shots\n' +
                file_to_process)
 
 
@@ -43,25 +63,56 @@ def basic_file_info(data):
 
     # print(np.mean(data['BPMMags'][1,:,:],0))
     # print(np.max(data['BPMMags'][1,:,:]))
-    #m = np.mean(data['BPMMags'][1, :, :], 0)
-    #mx = np.max(data['BPMMags'][1, :, :])
-    #numBunches = len(np.where(m/mx > 0.1)[0])
-    #print('Bunches = ', numBunches)
+    # m = np.mean(data['BPMMags'][1, :, :], 0)
+    # mx = np.max(data['BPMMags'][1, :, :])
+    # numBunches = len(np.where(m/mx > 0.1)[0])
+    # print('Bunches = ', numBunches)
 
     bCharge = (np.mean(np.mean(data['Toroids'][0, :, 1:]))*100)*10
     print('Bunch charge = ', bCharge, 'pC/b')
 
 
+def plot_raw_data(data, device, mode):
+    '''
+    Plots raw data.
+    If mode is 0, plots first repetition (shot) for all devices.
+    If mode is not 0, plots all repetitions of device number <mode>
+    '''
+    devs = data[device]
+    num_devs = devs.shape[0]
+    reps = devs.shape[1]  # 'shots'
+    points = devs.shape[2]
+    print('Num devices = ', num_devs)
+    print('Repetitions (shots)= ', reps)
+    print('Points per repetition = ', points)
+    if mode == 0:
+        title = 'All %s 1st rep' % device
+        for dev in range(0, num_devs):
+            plt.plot(devs[dev][0], label='%s %s' % (device, dev + 1))
+            plt.legend()
+    else:
+        title = device + ' ' + str(mode)
+        for rep in range(0, reps):
+            plt.plot(devs[mode-1][rep])
+    plt.title(title)
+    plt.show()
+
+
 def plot_toroids(data, mode):
+    '''
+    Plots raw toroid data.
+    If mode is 0, plots first repetition (shot) for all toroids
+    If mode is not 0, plots all repetitions of toroid number <mode>
+    '''
     toroids = data['Toroids']
     num_toroids = toroids.shape[0]
-    reps = toroids.shape[1]
+    reps = toroids.shape[1]  # 'shots'
     points = toroids.shape[2]
     print('Num toroids = ', num_toroids)
     print('toroids Repetitions = ', reps)
-    print('toroids Points = ', points)
+    print('toroids Points per repetition = ', points)
     if mode == 0:
-        title = 'Toroids'
+        title = 'All Toroids 1st rep'
         for toroid in range(0, num_toroids):
             plt.plot(toroids[toroid][0], label='Toroid %s' % (toroid + 1))
             plt.legend()
@@ -74,6 +125,12 @@ def plot_toroids(data, mode):
 
 
 def plot_BPMMags(data, mode):
+    '''
+    Plots raw BPMs magnets data.
+    Only applies for data from shift 1 & 2. CC cavities.
+    If mode is 0, plots first repetition (shot) for all BPM Magnets.
+    If mode is not 0, plots all repetitions of BPM Magnet number <mode>.
+    '''
     BPMMags = data['BPMMags']
     num_BPMMags = BPMMags.shape[0]
     reps = BPMMags.shape[1]
@@ -82,11 +139,11 @@ def plot_BPMMags(data, mode):
     print('BPMMags Repetitions = ', reps)
     print('BPMMAgs Points = ', points)
     if mode == 0:
-        title = 'BPMMags'
+        title = 'All BPM Magnets 1st rep'
         for bpmMag in range(0, num_BPMMags):
             plt.plot(BPMMags[bpmMag][0])
     else:
-        title = 'BPMMag ' + str(mode)
+        title = 'BPM Magnet ' + str(mode)
         for rep in range(0, reps):
             plt.plot(BPMMags[mode-1][rep])
     plt.title(title)
@@ -94,6 +151,12 @@ def plot_BPMMags(data, mode):
 
 
 def plot_BPM(data, mode, bpm_type):
+    '''
+    Plots BPM data.
+    bpm_type is BPMs for shift 1 & 2 and LEBPMs or HEBPMs for shitfs 3 to 6
+    If mode is 0, plots first repetition (shot) for all BPMs.
+    If mode is not 0, plots all repetitions of BPM number <mode>.
+    '''
     print("Plotting %s data" % bpm_type)
     BPMs = data[bpm_type]
     num_BPMs = BPMs.shape[0]
@@ -103,9 +166,9 @@ def plot_BPM(data, mode, bpm_type):
     print('BPMs Repetitions = ', reps)
     print('BPMs Points = ', points)
     if mode == 0:
-        title = 'BPMs'
+        title = 'All BPMs first rep'
         for bpm in range(0, num_BPMs):
-            plt.plot(BPMs[bpm][0], label='BPM %s' %(bpm+1))
+            plt.plot(BPMs[bpm][0], label='BPM %s' % (bpm+1))
         plt.legend()
     else:
         title = 'BPM ' + str(mode)
@@ -117,15 +180,21 @@ def plot_BPM(data, mode, bpm_type):
 
 
 def plot_raw_HOMs(data, mode):
+    '''
+    Plots HOM data from CC1 and CC2.
+    Only applies for shifts 1 & 2
+    If mode is 0, plots first repetition (shot) for all HOMS.
+    If mode is not 0, plots all repetitions of HOM number <mode>.
+    '''
     HOMs = data['HOMs']
     num_HOMs = HOMs.shape[0]
     reps = HOMs.shape[1]
-    points = HOMs.shape[2] # num of bunches + 6
+    points = HOMs.shape[2]  # num of bunches + 6
     print('Num HOMs = ', num_HOMs)
     print('Repetitions = ', reps)
     print('Points = ', points)
     if mode == 0:
-        title = 'HOMs'
+        title = 'All HOMs first shot'
         for hom in range(0, num_HOMs):
             plt.plot(HOMs[hom][0], label='HOM %s' % data['HOMs_List'][hom])
             plt.legend()
@@ -133,16 +202,25 @@ def plot_raw_HOMs(data, mode):
         title = 'HOM ' + str(mode)
         for rep in range(0, reps):
             plt.plot(HOMs[mode-1][rep])
-    plt.xlim([740, 810])
+    plt.xlim([740, 810])  # Limits where you can find the HOM signal
     plt.title(title)
     plt.show()
 
 
 def plot_raw_CMHOMs(data, mode, s):
+    '''
+    Plots CM HOM data from CM2.
+    Only applies for shifts 3 to 6.
+    If mode is 0, plots first repetition (shot) for all CM HOMS.
+    If mode is not 0, plots all repetitions of CM HOM number <mode>.
+    '''
+    plot_xlim_l = 350
+    plot_xlim_h = 900
+    window = plot_xlim_h - plot_xlim_l
     CMHOMs = data['CMHOMs']
     num_CMHOMs = CMHOMs.shape[0]
     reps = CMHOMs.shape[1]
-    points = CMHOMs.shape[2] # num of bunches + 6
+    points = CMHOMs.shape[2]  # num of bunches + 6
     print('Num CMHOMs = ', num_CMHOMs)
     print('Repetitions = ', reps)
     print('Points = ', points)
@@ -155,24 +233,26 @@ def plot_raw_CMHOMs(data, mode, s):
             axs[0].set_xlabel('Sample')
             axs[0].set_ylabel('HOM Signal (V)')
             axs[0].set_title(slac_loc)
-            axs[0].set_xlim(200,750)
+            axs[0].set_xlim(plot_xlim_l, plot_xlim_h)
         for cmhom in range(8, num_CMHOMs):
             axs[1].plot(CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
             axs[1].legend()
             axs[1].set_xlabel('Sample')
             axs[1].set_ylabel('HOM Signal (V)')
             axs[1].set_title(fnal_loc)
-            axs[1].set_xlim(200,750)
+            axs[1].set_xlim(plot_xlim_l, plot_xlim_h)
 
         fig2, axs2 = plt.subplots(figsize=(7, 6))
         for cmhom in range(0, 8):
-            time = (np.arange(0, len(CMHOMs[cmhom][0]), 1) - 200) * 0.125 # 8MHz sample rate. T=0.125 us
+            # 8MHz sample rate. T=0.125 us
+            time = (np.arange(0, len(CMHOMs[cmhom][0]), 1) - 350) * 0.125
             axs2.plot(time, CMHOMs[cmhom][0], label=data['CMHOMs_List'][cmhom])
-            legend_properties = {'weight':'bold'}
+            legend_properties = {'weight': 'bold'}
             axs2.legend(fontsize=14, prop=legend_properties)
-            axs2.set_xlabel('Time ' + r'$\mathbf{[\mu s]}$', fontsize=16, fontweight='bold')
+            axs2.set_xlabel('Time ' + r'$\mathbf{[\mu s]}$', fontsize=16,
+                            fontweight='bold')
             axs2.set_ylabel('HOM Signal (V)', fontsize=16, fontweight='bold')
-            axs2.set_xlim(0,550 * 0.125)
+            axs2.set_xlim(0, window * 0.125)
             plt.xticks(fontsize=14, fontweight='bold')
             plt.yticks(fontsize=14, fontweight='bold')
 
@@ -188,6 +268,7 @@ def plot_raw_CMHOMs(data, mode, s):
         fig.savefig(main_time + '_first.png', dpi=500)
     plt.show()
 
+
 def process_BPM_data(data, bpm):
     print("Processing BPM data")
     BPMs = data[bpm]
@@ -202,10 +283,10 @@ def process_BPM_data(data, bpm):
     BPMend = 50
 
     bpm_means = np.zeros(num_BPMs)
-    #for i in range(0,num_BPMs):
-    for i in range(0,1):
+    # for i in range(0, num_BPMs):
+    for i in range(0, 1):
         bpm_rep_mean = np.zeros(reps)
-        for rep in range(0,reps):
+        for rep in range(0, reps):
             bpm_rep_mean[rep] = np.mean(BPMs[i][rep][BPMstart:BPMend])
             print(bpm_rep_mean[rep])
         exit()
@@ -217,9 +298,9 @@ def process_BPM_data(data, bpm):
         cc2_pos = 5.506526  # meters
         ccLen = 1.0  # meters
 
-        bpm_means_h = bpm_means[0:][::2] # Horizontal BPMs
+        bpm_means_h = bpm_means[0:][::2]  # Horizontal BPMs
         bpm_means_h = [x / 1000 for x in bpm_means_h]
-        bpm_means_v = bpm_means[1:][::2] # Vertical BPMs
+        bpm_means_v = bpm_means[1:][::2]  # Vertical BPMs
         bpm_means_v = [x / 1000 for x in bpm_means_v]
         plt.plot(data['bpmPos'][0:6], bpm_means_h[0:6], 'o-')
         plt.xlabel('Beamline Position (m)')
@@ -230,7 +311,7 @@ def process_BPM_data(data, bpm):
         plt.vlines(cc1_pos + (ccLen/2.0), -15, 15)
         plt.vlines(cc2_pos - (ccLen/2.0), -15, 15)
         plt.vlines(cc2_pos + (ccLen/2.0), -15, 15)
-        plt.text(cc1_pos , -14, 'CC1', ha='center')
+        plt.text(cc1_pos, -14, 'CC1', ha='center')
         plt.text(cc2_pos, -14, 'CC2', ha='center')
         plt.show()
 
@@ -259,7 +340,8 @@ def process_HOM_data(data):
     print('homs_peak_based_mean = ', homs_pk_bsd_mean)
     print('homs_peak_based_std = ', homs_pk_bsd_std)
 
-    txt = ('SLAC #2 chassis, 100 pC, 1 b, 1 Ampl, H101 = -0.875 A, 100 shots\n' +
+    txt = ('SLAC #2 chassis, 100 pC, 1 b, 1 Ampl, \
+           H101 = -0.875 A, 100 shots\n' +
            'AllData_2020-11-12-21-18-11.mat')
     fig.suptitle(txt, fontsize=16)  # Hardcoded title
     txt = ('CC1 Upstr Peak_Mean = ' + "{:.3f}".format(homs_pk_bsd_mean[0]) +
@@ -284,10 +366,12 @@ def process_CMHOM_data(data, s):
     reps = CMHOMs.shape[1]
 
     fig1, axs1 = plt.subplots(2, 4)
-    plt.subplots_adjust(left=0.06, bottom=0.07, right=0.97, top=None, wspace=None, hspace=0.24)
+    plt.subplots_adjust(left=0.06, bottom=0.07, right=0.97, top=None,
+                        wspace=None, hspace=0.24)
     fig1.suptitle(slac_loc + ' ' + main_title2, fontsize=16)  # Hardcoded title
     fig2, axs2 = plt.subplots(2, 3)
-    plt.subplots_adjust(left=0.06, bottom=0.07, right=0.97, top=None, wspace=None, hspace=0.24)
+    plt.subplots_adjust(left=0.06, bottom=0.07, right=0.97, top=None,
+                        wspace=None, hspace=0.24)
     fig2.suptitle(fnal_loc + ' ' + main_title2, fontsize=16)  # Hardcoded title
     cmhoms_pk_bsd_mean = np.zeros(num_CMHOMs)
     cmhoms_pk_bsd_std = np.zeros(num_CMHOMs)
@@ -296,11 +380,12 @@ def process_CMHOM_data(data, s):
         for rep in range(0, reps):
             cmhom_baseln_a = CMHOMs[cmhom][rep][100:200]
             cmhom_baseln_b = CMHOMs[cmhom][rep][1000:1500]
-            cmhom_baseln = np.mean(np.concatenate((cmhom_baseln_a, cmhom_baseln_b)))
+            cmhom_baseln = np.mean(np.concatenate((cmhom_baseln_a,
+                                                   cmhom_baseln_b)))
             cmhom_based = CMHOMs[cmhom][rep] - cmhom_baseln
             if cmhom < 12:
                 cmhoms_pks_bsd[rep] = np.max(cmhom_based)
-            elif cmhom >=12:
+            elif cmhom >= 12:
                 cmhoms_pks_bsd[rep] = np.min(cmhom_based)
             if cmhom < 8:
                 axs1[int(cmhom / 4), cmhom % 4].plot(cmhom_based)
@@ -308,7 +393,8 @@ def process_CMHOM_data(data, s):
                 axs2[int((cmhom-8) / 3), (cmhom-8) % 3].plot(cmhom_based)
         cmhoms_pk_bsd_mean[cmhom] = np.mean(cmhoms_pks_bsd)
         cmhoms_pk_bsd_std[cmhom] = np.std(cmhoms_pks_bsd)
-        txt = (data['CMHOMs_List'][cmhom] + ' Pk_mean = ' + "{:.3f}".format(cmhoms_pk_bsd_mean[cmhom]) +
+        txt = (data['CMHOMs_List'][cmhom] + ' Pk_mean = ' +
+               "{:.3f}".format(cmhoms_pk_bsd_mean[cmhom]) +
                '  Pk_STD = ' + "{:.4f}".format(cmhoms_pk_bsd_std[cmhom]))
         axs_title = txt
         if cmhom < 8:
@@ -322,17 +408,17 @@ def process_CMHOM_data(data, s):
             axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_xlim(200, 750)
             axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_title(axs_title)
             if int((cmhom-8) / 3) == 1:
-                axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_xlabel('Sample')
+                axs2[int((cmhom - 8) / 3), (cmhom-8) % 3].set_xlabel('Sample')
             if (cmhom-8) % 3 == 0:
-                axs2[int((cmhom-8) / 3), (cmhom-8) % 3].set_ylabel('HOM Signal (V)')
+                axs2[int((cmhom - 8) / 3), (cmhom-8) % 3].set_ylabel('HOM Signal (V)')
 
     print('cmhoms_peak_based_mean = ')
-    to_print=''
+    to_print =''
     for x in cmhoms_pk_bsd_mean:
         to_print = to_print + ',' + str(x)
     print(to_print)
     print('cmhoms_peak_based_std = ')
-    to_print=''
+    to_print =''
     for x in cmhoms_pk_bsd_std:
         to_print = to_print + ',' + str(x)
     print(to_print)
@@ -342,7 +428,7 @@ def process_CMHOM_data(data, s):
     if False: # if s:
         fig1.savefig(main_time + '_SLAC.png', dpi=500)
         fig2.savefig(main_time + '_FNAL.png', dpi=500)  
-           
+
         # save to csv file
         data = pd.read_csv(csv_file)
         new_row = [shift,main_time,main_bunches,main_charge,main_shots,V125,H125,slac_loc] # time,bunches,pC_b,shots
@@ -350,13 +436,9 @@ def process_CMHOM_data(data, s):
         new_row = pd.DataFrame([new_row], columns=data.columns)
         data = data.append(new_row, ignore_index=True)
         data.to_csv(csv_file,index=False,)      
-        
+
     plt.legend()
     plt.show()
-
-
-
-
 
 
 def integral_CMHOM(data, s):
@@ -367,7 +449,7 @@ def integral_CMHOM(data, s):
     #plt.plot(x,y)
     #plt.show()
     #exit()
-    
+
     CMHOMs = data['CMHOMs']
     num_CMHOMs = CMHOMs.shape[0]
     reps = CMHOMs.shape[1]
@@ -379,32 +461,26 @@ def integral_CMHOM(data, s):
         for rep in range(0, reps):
             cmhom_baseln_a = CMHOMs[cmhom][rep][100:200]
             cmhom_baseln_b = CMHOMs[cmhom][rep][1000:1500]
-            cmhom_baseln = np.mean(np.concatenate((cmhom_baseln_a, cmhom_baseln_b)))
+            cmhom_baseln = np.mean(np.concatenate((cmhom_baseln_a,
+                                                   cmhom_baseln_b)))
             cmhom_based = CMHOMs[cmhom][rep] - cmhom_baseln
             if cmhom < 12:
-                cmhoms_int_bsd[rep] = trapz(cmhom_based,dx=0.125e-6)
-            elif cmhom >=12:
-                cmhoms_int_bsd[rep] = trapz(cmhom_based,dx=0.125e-6) * (-1)
+                cmhoms_int_bsd[rep] = trapz(cmhom_based, dx=0.125e-6)
+            elif cmhom >= 12:
+                cmhoms_int_bsd[rep] = trapz(cmhom_based, dx=0.125e-6) * (-1)
         cmhoms_int_bsd_mean[cmhom] = np.mean(cmhoms_int_bsd)
         cmhoms_int_bsd_std[cmhom] = np.std(cmhoms_int_bsd)
 
     print('cmhoms_peak_based_mean = ')
-    to_print=''
+    to_print = ''
     for x in cmhoms_int_bsd_mean:
         to_print = to_print + ',' + str(x)
     print(to_print)
     print('cmhoms_peak_based_std = ')
-    to_print=''
+    to_print = ''
     for x in cmhoms_int_bsd_std:
         to_print = to_print + ',' + str(x)
     print(to_print)
-
-
-
-
-
-
-
 
 
 def V101_HOM(data_file):
@@ -449,19 +525,22 @@ def CMHOM_125(data_file):
 
     # For shift #6
     for loc in ['Upstr', 'Dwnstr']:
-        for bc in [125,250,400,600]:
+        for bc in [125, 250, 400, 600]:
             print("Plotting " + loc + str(bc) + " pB/b")
             plt.figure(figsize=(7, 6))
             plt.rc('font', weight='bold')
-            data_frame = df[df['H125']==0.0][df['slac_loc']==loc][df['pC_b']==bc][df['bunches']==50]
+            data_frame = df[df['H125'] == 0.0][df['slac_loc'] == loc][df['pC_b'] == bc][df['bunches'] == 50]
             data_frame = data_frame.sort_values(by=['V125'])
             for cav in cavs:
-                hom = data_frame[cav+'_mean'].to_numpy() * np.power(10,data_frame['slac_atten']*2/20)
-                plt.plot(data_frame['V125'].to_numpy(), hom* 1e6, '--o',label=cav)
+                hom = data_frame[cav+'_mean'].to_numpy() * np.power(10, data_frame['slac_atten']*2/20)
+                plt.plot(data_frame['V125'].to_numpy(), hom, '--o',label=cav)
+                # plt.plot(data_frame['V125'].to_numpy(), hom* 1e6, '--o',label=cav)
             plt.ylim(bottom=0.0)
-            plt.xlabel('V125 Magnet Current from reference (A)', fontsize=16, fontweight='bold')
-            plt.ylabel('HOM Signal Integral (V' + u'\xb7' + r'$\mu s)$', fontsize=16, fontweight='bold')
-            #plt.title('Downstream, 600 pC, 50 b, 1 Ampl, H125=0.978 A (reference)', fontsize=20)  # Hardcoded title
+            plt.xlabel('V125 Magnet Current from reference (A)',
+                       fontsize=16, fontweight='bold')
+            plt.ylabel('HOM Signal Peak (|V|)', fontsize=16, fontweight='bold')
+            # plt.ylabel('HOM Signal Integral (V' + u'\xb7' + r'$\mu s)$', fontsize=16, fontweight='bold')
+            # plt.title('Downstream, 600 pC, 50 b, 1 Ampl, H125=0.978 A (reference)', fontsize=20)  # Hardcoded title
             plt.legend(loc=9, fontsize=14)
             plt.tick_params(labelsize=14)
             plt.locator_params(axis="x", nbins=7)
@@ -497,7 +576,6 @@ def CMHOM_125(data_file):
                 plt.locator_params(axis="x", nbins=7)
                 plt.grid(True)
                 plt.show()
-
 
     exit()
 
@@ -657,20 +735,20 @@ def V101_BPM(data_file):
     cc1_pos = 2.79763  # meters
     cc2_pos = 5.506526  # meters
     ccLen = 1.0  # meters
-    bpmPos = [923.561,1432.107,4107.671,6819.571,8331.05,
-              9142.588,10646.421,11534.404,13109.365,15724.128,
-              16481.008,17341.977,18153.57075,19000,20000, 21000] # mm
+    bpmPos = [923.561, 1432.107, 4107.671, 6819.571, 8331.05,
+              9142.588, 10646.421, 11534.404, 13109.365, 15724.128,
+              16481.008, 17341.977, 18153.57075, 19000, 20000, 21000] # mm
 
-    plt.plot(np.ones(5)*bpmPos[0]/1000, bpm101PH,'o', label='B101PH')
-    plt.plot(np.ones(5)*bpmPos[1]/1000, bpm102PH,'o', label='B102PH')
-    plt.plot(np.ones(5)*bpmPos[2]/1000, bpm103PH,'o', label='B103PH')
-    plt.plot(np.ones(5)*bpmPos[3]/1000, bpm104PH,'o', label='B104PH')
-    plt.plot(np.ones(5)*bpmPos[4]/1000, bpm106PH,'o', label='B106PH')
-    plt.plot(np.ones(5)*bpmPos[5]/1000, bpm107PH,'o', label='B107PH')
-    plt.plot(np.ones(5)*bpmPos[6]/1000, bpm111PH,'o', label='B111PH')
-    plt.plot(np.ones(5)*bpmPos[7]/1000, bpm113PH,'o', label='B113PH')
-    plt.plot(np.ones(5)*bpmPos[8]/1000, bpm117PH,'o', label='B117PH')
-    plt.plot(np.ones(5)*bpmPos[9]/1000, bpm118PH,'o', label='B118PH')
+    plt.plot(np.ones(5)*bpmPos[0]/1000, bpm101PH, 'o', label='B101PH')
+    plt.plot(np.ones(5)*bpmPos[1]/1000, bpm102PH, 'o', label='B102PH')
+    plt.plot(np.ones(5)*bpmPos[2]/1000, bpm103PH, 'o', label='B103PH')
+    plt.plot(np.ones(5)*bpmPos[3]/1000, bpm104PH, 'o', label='B104PH')
+    plt.plot(np.ones(5)*bpmPos[4]/1000, bpm106PH, 'o', label='B106PH')
+    plt.plot(np.ones(5)*bpmPos[5]/1000, bpm107PH, 'o', label='B107PH')
+    plt.plot(np.ones(5)*bpmPos[6]/1000, bpm111PH, 'o', label='B111PH')
+    plt.plot(np.ones(5)*bpmPos[7]/1000, bpm113PH, 'o', label='B113PH')
+    plt.plot(np.ones(5)*bpmPos[8]/1000, bpm117PH, 'o', label='B117PH')
+    plt.plot(np.ones(5)*bpmPos[9]/1000, bpm118PH, 'o', label='B118PH')
     plt.plot(np.ones(5)*bpmPos[10]/1000, bpm120PH,'o', label='B120PH')
     plt.plot(np.ones(5)*bpmPos[11]/1000, bpm121PH,'o', label='B121PH')
     plt.plot(np.ones(5)*bpmPos[12]/1000, bpm122PH,'o', label='B122PH')
@@ -685,7 +763,7 @@ def V101_BPM(data_file):
     plt.vlines(cc1_pos + (ccLen/2.0), -10000, 10000)
     plt.vlines(cc2_pos - (ccLen/2.0), -10000, 10000)
     plt.vlines(cc2_pos + (ccLen/2.0), -10000, 10000)
-    plt.text(cc1_pos , -9000, 'CC1', ha='center')
+    plt.text(cc1_pos, -9000, 'CC1', ha='center')
     plt.text(cc2_pos, -9000, 'CC2', ha='center')
     plt.title('SLAC Chassis #2, 250 pC, 50 b, 0 Ampl, 300 shots')  # Hardcoded title
     plt.legend()
@@ -697,7 +775,7 @@ def charge_CMHOM(data_file):
         readCSV = csv.reader(csvfile, delimiter=',')
         charge = []
         bunches = []
-        shots =[]
+        shots = []
         c1 = []
         c2 = []
         c3 = []
@@ -731,7 +809,6 @@ def charge_CMHOM(data_file):
                 c8_250.append(float(row[15]))
                 c1_325.append(float(row[16]))
                 c8_325.append(float(row[17]))
-
 
     data = {'bunches' : bunches, 'charge' : charge, 'shots' : shots,
             'c1' : c1, 'c2' : c2, 'c3' : c3, 'c4' : c4,
@@ -811,13 +888,15 @@ def charge_CMHOM_pd(data_file):
 
     slac_cavs = [1,2,3,4,5,6,7,8]
     df_slac = df[df.cav.isin(slac_cavs)]
-    g = sns.catplot(x="charge", y="hom", hue='cav', row='bunches', col='loc', jitter=False, data=df_slac, sharey=False)
+    g = sns.catplot(x="charge", y="hom", hue='cav', row='bunches', col='loc',
+                    jitter=False, data=df_slac, sharey=False)
     g.set_xlabels('Bunch Charge (pC)')
     g.set_ylabels('HOM Peak (V)')
     #plt.show(g)
 
     # Plot suggested by Alex
-    alex_plt = sns.catplot(x="cav", y="hom", hue='charge', col='loc', row='bunches', jitter=False, data=df_slac, sharey=False)
+    alex_plt = sns.catplot(x="cav", y="hom", hue='charge', col='loc',
+                           row='bunches', jitter=False, data=df_slac, sharey=False)
     alex_plt.set_xlabels('Cavity')
     alex_plt.set_ylabels('HOM Peak (V)')
     #title = ('Up and downstream HOM peaks V125 at -1 Amp\n' +
@@ -825,11 +904,14 @@ def charge_CMHOM_pd(data_file):
     #plt.title(title)
     plt.show(alex_plt)
 
+
 if __name__ == "__main__":
     des = 'Procces and plot FAST data'
     parser = argparse.ArgumentParser(description=des)
     parser.add_argument('-f', '--file', dest='data_file', required=True,
                         help='File with data to be processed/plotted')
+    parser.add_argument('-pr', dest='dev', choices=['Toroids', 'BPMMags', 'BPMs', 'HOMs', 'CMHOMs'],
+                        help='Plot raw data of desired device')
     parser.add_argument('-hom', action="store_true",
                         help='Plot Capture Cavities (CC) HOM raw data')
     parser.add_argument('-cmhom', action="store_true",
@@ -921,18 +1003,8 @@ if __name__ == "__main__":
         process_BPM_data(data, "BPMs")
     if args.plebpm:
         process_BPM_data(data, "LEBPMs")
-    if args.tor:
-        plot_toroids(data, args.mode)
-    if args.bpmmag:
-        plot_BPMMags(data, args.mode)
-    if args.bpm:
-        plot_BPM(data, args.mode, 'BPMs')
-    if args.hebpm:
-        plot_BPM(data, args.mode, 'HEBPMs')
-    if args.lebpm:
-        plot_BPM(data, args.mode, 'LEBPMs')
-    if args.hom:
-        plot_raw_HOMs(data, args.mode)
+    if args.dev:
+        plot_raw_data(data, args.dev, args.mode)
     if args.cmhom:
         plot_raw_CMHOMs(data, args.mode, args.s)
     if args.pcmhom:
