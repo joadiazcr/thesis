@@ -75,9 +75,15 @@ def basic_file_info(data):
 def plot_raw_data(data, device, mode):
     '''
     Plots raw data.
+    BPMs magnets data only applies for data from shift 1 & 2. CC cavities
+    BPMs data only applies for shift 1 & 2.CC cavities.
+    HOMs only applies for shifts 1 & 2.
+    LEBPMs or HEBPMs only applies for shitfs 3 to 6.
+    CMHOM only applies for shitfs 3 to 6.
     If mode is 0, plots first repetition (shot) for all devices.
     If mode is not 0, plots all repetitions of device number <mode>
     '''
+    print('Plotting raw data for %s' % device)
     devs = data[device]
     num_devs = devs.shape[0]
     reps = devs.shape[1]  # 'shots'
@@ -88,94 +94,22 @@ def plot_raw_data(data, device, mode):
     if mode == 0:
         title = 'All %s 1st rep' % device
         for dev in range(0, num_devs):
-            plt.plot(devs[dev][0], label='%s %s' % (device, dev + 1))
+            if str(device) == 'HOMs':
+                label = 'HOM %s' % data['HOMs_List'][dev]
+            else:
+                label = '%s %s' % (device, dev + 1)
+            plt.plot(devs[dev][0], label=label)
             plt.legend()
     else:
-        title = device + ' ' + str(mode)
+        if str(device) == 'HOMs':
+            title = 'HOM %s' % data['HOMs_List'][mode-1]
+        else:
+            title = '%s %s' % (device, mode)
         for rep in range(0, reps):
             plt.plot(devs[mode-1][rep])
+    if device == 'HOMs':
+        plt.xlim([740, 810])  # Limits where you can find the HOM signal
     plt.title(title)
-    plt.show()
-
-
-def plot_toroids(data, mode):
-    '''
-    Plots raw toroid data.
-    If mode is 0, plots first repetition (shot) for all toroids
-    If mode is not 0, plots all repetitions of toroid number <mode>
-    '''
-    toroids = data['Toroids']
-    num_toroids = toroids.shape[0]
-    reps = toroids.shape[1]  # 'shots'
-    points = toroids.shape[2]
-    print('Num toroids = ', num_toroids)
-    print('toroids Repetitions = ', reps)
-    print('toroids Points per repetition = ', points)
-    if mode == 0:
-        title = 'All Toroids 1st rep'
-        for toroid in range(0, num_toroids):
-            plt.plot(toroids[toroid][0], label='Toroid %s' % (toroid + 1))
-            plt.legend()
-    else:
-        title = 'Toroid ' + str(mode)
-        for rep in range(0, reps):
-            plt.plot(toroids[mode-1][rep])
-    plt.title(title)
-    plt.show()
-
-
-def plot_BPMMags(data, mode):
-    '''
-    Plots raw BPMs magnets data.
-    Only applies for data from shift 1 & 2. CC cavities.
-    If mode is 0, plots first repetition (shot) for all BPM Magnets.
-    If mode is not 0, plots all repetitions of BPM Magnet number <mode>.
-    '''
-    BPMMags = data['BPMMags']
-    num_BPMMags = BPMMags.shape[0]
-    reps = BPMMags.shape[1]
-    points = BPMMags.shape[2]
-    print('Num BPMMags = ', num_BPMMags)
-    print('BPMMags Repetitions = ', reps)
-    print('BPMMAgs Points = ', points)
-    if mode == 0:
-        title = 'All BPM Magnets 1st rep'
-        for bpmMag in range(0, num_BPMMags):
-            plt.plot(BPMMags[bpmMag][0])
-    else:
-        title = 'BPM Magnet ' + str(mode)
-        for rep in range(0, reps):
-            plt.plot(BPMMags[mode-1][rep])
-    plt.title(title)
-    plt.show()
-
-
-def plot_BPM(data, mode, bpm_type):
-    '''
-    Plots BPM data.
-    bpm_type is BPMs for shift 1 & 2 and LEBPMs or HEBPMs for shitfs 3 to 6
-    If mode is 0, plots first repetition (shot) for all BPMs.
-    If mode is not 0, plots all repetitions of BPM number <mode>.
-    '''
-    print("Plotting %s data" % bpm_type)
-    BPMs = data[bpm_type]
-    num_BPMs = BPMs.shape[0]
-    reps = BPMs.shape[1]
-    points = BPMs.shape[2]
-    print('Num BPMs = ', num_BPMs)
-    print('BPMs Repetitions = ', reps)
-    print('BPMs Points = ', points)
-    if mode == 0:
-        title = 'All BPMs first rep'
-        for bpm in range(0, num_BPMs):
-            plt.plot(BPMs[bpm][0], label='BPM %s' % (bpm+1))
-        plt.legend()
-    else:
-        title = 'BPM ' + str(mode)
-        for rep in range(0, reps):
-            plt.plot(BPMs[mode-1][rep])
-    plt.title(title)
-    plt.grid(True)
     plt.show()
 
 
@@ -910,7 +844,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=des)
     parser.add_argument('-f', '--file', dest='data_file', required=True,
                         help='File with data to be processed/plotted')
-    parser.add_argument('-pr', dest='dev', choices=['Toroids', 'BPMMags', 'BPMs', 'HOMs', 'CMHOMs'],
+    parser.add_argument('-pr', dest='dev', choices=['Toroids', 'BPMMags', 'BPMs', 'LEBPMs', 'HEBPMs', 'HOMs', 'CMHOMs'],
                         help='Plot raw data of desired device')
     parser.add_argument('-hom', action="store_true",
                         help='Plot Capture Cavities (CC) HOM raw data')
