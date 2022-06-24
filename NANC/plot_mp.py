@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import json
-from scipy.fft import fft, fftfreq
+from scipy.fft import fftfreq
 from scipy import signal
+
 
 def psd_calc(y, dt):
     npt = len(y)
@@ -14,7 +15,8 @@ def psd_calc(y, dt):
     freq = np.arange(npt/2) * df
     psd = abs(ss)**2/df
 
-    # correct for the sinc^2 filter that's used for anti-aliasing before decimation
+    # correct for the sinc^2 filter that's used
+    # for anti-aliasing before decimation
     st = np.sinc(freq*dt)**4 + np.sinc(1-freq*dt)**4
     psd = psd / st
 
@@ -41,9 +43,9 @@ def mp_plot(data_f, wsp, conf_f, tt):
 
     data = np.loadtxt(data_f)
     N, nch = data.shape
-    data1 = data[:,int(exps[1])]
+    data1 = data[:, int(exps[1])]
     label1 = labels[1]
-    data2 = data[:,int(exps[0])]
+    data2 = data[:, int(exps[0])]
     label2 = labels[0]
 
     # Assume 2 kHz samp rate
@@ -63,8 +65,8 @@ def mp_plot(data_f, wsp, conf_f, tt):
     freq2, psd2 = signal.periodogram(data2, 1/dt)
 
     # Cumulative detuning STD
-    fft_raw[0]=0
-    fft_raw2[0]=0
+    fft_raw[0] = 0
+    fft_raw2[0] = 0
     c_d = np.sqrt(np.cumsum(abs(fft_raw**2)))*np.sqrt(2)
     c_d2 = np.sqrt(np.cumsum(abs(fft_raw2**2)))*np.sqrt(2)
 
@@ -74,8 +76,8 @@ def mp_plot(data_f, wsp, conf_f, tt):
     plt.title(title)
     plt.xlabel('Time [s]')
     plt.ylabel('Detuning [Hz]')
-    plt.plot(t_base, data1, label = label1)
-    plt.plot(t_base, data2, label = label2)
+    plt.plot(t_base, data1, label=label1)
+    plt.plot(t_base, data2, label=label2)
     plt.axhline(y=-10, color='r', linestyle='--', alpha=0.3)
     plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
     plt.xlim(t_base[0], t_base[-1])
@@ -85,9 +87,9 @@ def mp_plot(data_f, wsp, conf_f, tt):
     title = 'Cavity Detuning Spectrum\n' + tt
     plt.title(title)
     plt.xlabel('Frequency [Hz]')
-    plt.plot(xf, 2.0/N * np.abs(fft[0:N//2]), label = label1)
-    plt.plot(xf, 2.0/N * np.abs(fft2[0:N//2]), label = label2)
-    plt.xlim(0,max_freq)
+    plt.plot(xf, 2.0/N * np.abs(fft[0:N//2]), label=label1)
+    plt.plot(xf, 2.0/N * np.abs(fft2[0:N//2]), label=label2)
+    plt.xlim(0, max_freq)
     plt.legend(loc='upper right')
 
     plt.figure(3)
@@ -95,9 +97,9 @@ def mp_plot(data_f, wsp, conf_f, tt):
     plt.title(title)
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Detuning PSD [Hz]')
-    plt.semilogy(freq[1:],psd[1:], label = label1)
-    plt.semilogy(freq2[1:],psd2[1:], label = label2)
-    plt.xlim(0,max_freq)
+    plt.semilogy(freq[1:], psd[1:], label=label1)
+    plt.semilogy(freq2[1:], psd2[1:], label=label2)
+    plt.xlim(0, max_freq)
     plt.legend(loc='upper right')
 
     plt.figure(4)
@@ -131,13 +133,14 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description="Microphonics plotter")
-    parser.add_argument('-f', '--file', dest='datafile', help='Waveform data file')
-    parser.add_argument('-wsp', '--wave_samp_per', dest='wsp', default=1, type=int,
-                        help='Waveform decimation factor')
-    parser.add_argument('-c', '--conf', dest='conf_file', help='Configuration File')
+    parser.add_argument('-f', '--file', dest='datafile',
+                        help='Waveform data file')
+    parser.add_argument('-wsp', '--wave_samp_per', dest='wsp', default=1,
+                        type=int, help='Waveform decimation factor')
+    parser.add_argument('-c', '--conf', dest='conf_file',
+                        help='Configuration File')
     parser.add_argument('-t', '--title', dest='tt', help='Plot Title')
 
     args = parser.parse_args()
 
     mp_plot(args.datafile, args.wsp, args.conf_file, args.tt)
-
