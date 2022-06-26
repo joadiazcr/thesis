@@ -5,6 +5,16 @@ from scipy.fft import fftfreq
 from scipy import signal
 
 
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+plt.rc('font', size=18)
+plt.rc('axes', labelsize=18)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=16)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=16)    # fontsize of the tick labels
+plt.rc('legend', fontsize=14)    # legend fontsize
+plt.rc('figure', titlesize=18)  # fontsize of the figure title
+
+
 def psd_calc(y, dt):
     npt = len(y)
     window = np.hanning(npt)*2
@@ -50,7 +60,6 @@ def mp_plot(data_f, wsp, conf_f, tt):
 
     # Assume 2 kHz samp rate
     dt = wsp/2e3
-    fs = 1/dt
     t_base = np.arange(0, dt*N, dt)
 
     # FFT
@@ -72,8 +81,9 @@ def mp_plot(data_f, wsp, conf_f, tt):
 
     max_freq = 250
     plt.figure(1)
-    title = 'Cavity Detuning\n' + tt
-    plt.title(title)
+    if tt != '':
+        title = 'Cavity Detuning\n' + tt
+        plt.title(title)
     plt.xlabel('Time [s]')
     plt.ylabel('Detuning [Hz]')
     plt.plot(t_base, data1, label=label1)
@@ -82,29 +92,35 @@ def mp_plot(data_f, wsp, conf_f, tt):
     plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
     plt.xlim(t_base[0], t_base[-1])
     plt.legend(loc='upper right')
+    plt.tight_layout()
 
     plt.figure(2)
-    title = 'Cavity Detuning Spectrum\n' + tt
-    plt.title(title)
+    if tt != '':
+        title = 'Cavity Detuning Spectrum\n' + tt
+        plt.title(title)
     plt.xlabel('Frequency [Hz]')
     plt.plot(xf, 2.0/N * np.abs(fft[0:N//2]), label=label1)
     plt.plot(xf, 2.0/N * np.abs(fft2[0:N//2]), label=label2)
     plt.xlim(0, max_freq)
     plt.legend(loc='upper right')
+    plt.tight_layout()
 
     plt.figure(3)
-    title = 'Cavity Detuning PSD\n' + tt
-    plt.title(title)
+    if tt != '':
+        title = 'Cavity Detuning PSD\n' + tt
+        plt.title(title)
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Detuning PSD [Hz]')
     plt.semilogy(freq[1:], psd[1:], label=label1)
     plt.semilogy(freq2[1:], psd2[1:], label=label2)
     plt.xlim(0, max_freq)
     plt.legend(loc='upper right')
+    plt.tight_layout()
 
     plt.figure(4)
-    title = 'Detuning Histogram\n' + tt
-    plt.title(title)
+    if tt != '':
+        title = 'Detuning Histogram\n' + tt
+        plt.title(title)
     plt.xlabel('Detuning [Hz]')
     plt.ylabel('Counts')
     plt.hist(data1, bins=140,  histtype='step', log='True', label=label1)
@@ -112,10 +128,12 @@ def mp_plot(data_f, wsp, conf_f, tt):
     plt.axvline(x=-10, color='r', linestyle='--', alpha=0.3)
     plt.axvline(x=10, color='r', linestyle='--', alpha=0.3)
     plt.legend(loc='upper right')
+    plt.tight_layout()
 
     plt.figure(5)
-    title = 'Cumulative Detuning STD\n' + tt
-    plt.title(title)
+    if tt != '':
+        title = 'Cumulative Detuning STD\n' + tt
+        plt.title(title)
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Detuning STD [Hz]')
     plt.plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label=label1)
@@ -125,6 +143,7 @@ def mp_plot(data_f, wsp, conf_f, tt):
     plt.xlim(0, max_freq)
     plt.ylim(bottom=0)
     plt.legend(loc='upper right')
+    plt.tight_layout()
     plt.show()
 
 
@@ -133,13 +152,14 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description="Microphonics plotter")
-    parser.add_argument('-f', '--file', dest='datafile',
+    parser.add_argument('-f', '--file', dest='datafile', required=True,
                         help='Waveform data file')
     parser.add_argument('-wsp', '--wave_samp_per', dest='wsp', default=1,
                         type=int, help='Waveform decimation factor')
-    parser.add_argument('-c', '--conf', dest='conf_file',
+    parser.add_argument('-c', '--conf', dest='conf_file', required=True,
                         help='Configuration File')
-    parser.add_argument('-t', '--title', dest='tt', help='Plot Title')
+    parser.add_argument('-t', '--title', dest='tt', help='Plot Title',
+                        default='')
 
     args = parser.parse_args()
 
