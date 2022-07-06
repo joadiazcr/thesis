@@ -7,12 +7,6 @@ from scipy import signal
 
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
-plt.rc('font', size=18)
-plt.rc('axes', labelsize=18)    # fontsize of the x and y labels
-plt.rc('xtick', labelsize=16)    # fontsize of the tick labels
-plt.rc('ytick', labelsize=16)    # fontsize of the tick labels
-plt.rc('legend', fontsize=14)    # legend fontsize
-plt.rc('figure', titlesize=18)  # fontsize of the figure title
 
 
 def psd_calc(y, dt):
@@ -43,6 +37,14 @@ def psd_calc(y, dt):
 
 def mp_plot(data_f, wsp, conf_f, tt):
 
+    data_all = np.loadtxt(data_f)
+    N, nch = data_all.shape
+    print('data shape: %s X %s' %(N, nch))
+    # Assume 2 kHz samp rate
+    dt = wsp/2e3
+    t_base = np.arange(0, dt*N, dt)
+    max_freq = 250
+
     f = open(conf_f)
     conf = json.load(f)
     exps = []
@@ -51,99 +53,80 @@ def mp_plot(data_f, wsp, conf_f, tt):
         exps = np.append(exps, i)
         labels = np.append(labels, conf[i])
 
-    data = np.loadtxt(data_f)
-    N, nch = data.shape
-    data1 = data[:, int(exps[1])]
-    label1 = labels[1]
-    data2 = data[:, int(exps[0])]
-    label2 = labels[0]
+    for i in conf:
+        data = data_all[:, int(i)]
+        label = conf[i]
+        print("jason %s, label %s" %(i, label))
+        # FFT
+        fft_raw = np.fft.fft(data)/len(data)
+        fft = fft_raw*dt*N
+        xf = fftfreq(N, dt)[:N//2]
 
-    # Assume 2 kHz samp rate
-    dt = wsp/2e3
-    t_base = np.arange(0, dt*N, dt)
+        # Power Spectral Density
+        freq, psd = signal.periodogram(data, 1/dt)
 
-    # FFT
-    fft_raw = np.fft.fft(data1)/len(data1)
-    fft_raw2 = np.fft.fft(data2)/len(data2)
-    fft = fft_raw*dt*N
-    fft2 = fft_raw2*dt*N
-    xf = fftfreq(N, dt)[:N//2]
+        # Cumulative detuning STD
+        fft_raw[0] = 0
+        c_d = np.sqrt(np.cumsum(abs(fft_raw**2)))*np.sqrt(2)
 
-    # Power Spectral Density
-    freq, psd = signal.periodogram(data1, 1/dt)
-    freq2, psd2 = signal.periodogram(data2, 1/dt)
+        plt.figure(1)
+        if tt != '':
+            title = 'Cavity Detuning\n' + tt
+            plt.title(title)
+        plt.xlabel('Time [s]')
+        plt.ylabel('Detuning [Hz]')
+        plt.plot(t_base, data, label=label)
+        plt.axhline(y=-10, color='r', linestyle='--', alpha=0.3)
+        plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
+        plt.xlim(t_base[0], t_base[-1])
+        plt.legend(loc='upper right')
+        plt.tight_layout()
 
-    # Cumulative detuning STD
-    fft_raw[0] = 0
-    fft_raw2[0] = 0
-    c_d = np.sqrt(np.cumsum(abs(fft_raw**2)))*np.sqrt(2)
-    c_d2 = np.sqrt(np.cumsum(abs(fft_raw2**2)))*np.sqrt(2)
+        plt.figure(2)
+        if tt != '':
+            title = 'Cavity Detuning Spectrum\n' + tt
+            plt.title(title)
+        plt.xlabel('Frequency [Hz]')
+        plt.plot(xf, 2.0/N * np.abs(fft[0:N//2]), label=label)
+        plt.xlim(0, max_freq)
+        plt.legend(loc='upper right')
+        plt.tight_layout()
 
-    max_freq = 250
-    plt.figure(1)
-    if tt != '':
-        title = 'Cavity Detuning\n' + tt
-        plt.title(title)
-    plt.xlabel('Time [s]')
-    plt.ylabel('Detuning [Hz]')
-    plt.plot(t_base, data1, label=label1)
-    plt.plot(t_base, data2, label=label2)
-    plt.axhline(y=-10, color='r', linestyle='--', alpha=0.3)
-    plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
-    plt.xlim(t_base[0], t_base[-1])
-    plt.legend(loc='upper right')
-    plt.tight_layout()
+        plt.figure(3)
+        if tt != '':
+            title = 'Cavity Detuning PSD\n' + tt
+            plt.title(title)
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Detuning PSD [Hz]')
+        plt.semilogy(freq[1:], psd[1:], label=label)
+        plt.xlim(0, max_freq)
+        plt.legend(loc='upper right')
+        plt.tight_layout()
 
-    plt.figure(2)
-    if tt != '':
-        title = 'Cavity Detuning Spectrum\n' + tt
-        plt.title(title)
-    plt.xlabel('Frequency [Hz]')
-    plt.plot(xf, 2.0/N * np.abs(fft[0:N//2]), label=label1)
-    plt.plot(xf, 2.0/N * np.abs(fft2[0:N//2]), label=label2)
-    plt.xlim(0, max_freq)
-    plt.legend(loc='upper right')
-    plt.tight_layout()
+        plt.figure(4)
+        if tt != '':
+            title = 'Detuning Histogram\n' + tt
+            plt.title(title)
+        plt.xlabel('Detuning [Hz]')
+        plt.ylabel('Counts')
+        plt.hist(data, bins=140,  histtype='step', log='True', label=label)
+        plt.axvline(x=-10, color='r', linestyle='--', alpha=0.3)
+        plt.axvline(x=10, color='r', linestyle='--', alpha=0.3)
+        plt.legend(loc='upper right')
+        plt.tight_layout()
 
-    plt.figure(3)
-    if tt != '':
-        title = 'Cavity Detuning PSD\n' + tt
-        plt.title(title)
-    plt.xlabel('Frequency [Hz]')
-    plt.ylabel('Detuning PSD [Hz]')
-    plt.semilogy(freq[1:], psd[1:], label=label1)
-    plt.semilogy(freq2[1:], psd2[1:], label=label2)
-    plt.xlim(0, max_freq)
-    plt.legend(loc='upper right')
-    plt.tight_layout()
-
-    plt.figure(4)
-    if tt != '':
-        title = 'Detuning Histogram\n' + tt
-        plt.title(title)
-    plt.xlabel('Detuning [Hz]')
-    plt.ylabel('Counts')
-    plt.hist(data1, bins=140,  histtype='step', log='True', label=label1)
-    plt.hist(data2, bins=140,  histtype='step', log='True', label=label2)
-    plt.axvline(x=-10, color='r', linestyle='--', alpha=0.3)
-    plt.axvline(x=10, color='r', linestyle='--', alpha=0.3)
-    plt.legend(loc='upper right')
-    plt.tight_layout()
-
-    plt.figure(5)
-    if tt != '':
-        title = 'Cumulative Detuning STD\n' + tt
-        plt.title(title)
-    plt.xlabel('Frequency [Hz]')
-    plt.ylabel('Detuning STD [Hz]')
-    plt.plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label=label1)
-    plt.plot(fftfreq(N, dt)[:N//2], c_d2[:N//2], label=label2)
-    print(np.std(data1))
-    print(np.std(data2))
-    plt.xlim(0, max_freq)
-    plt.ylim(bottom=0)
-    plt.legend(loc='upper right')
-    plt.tight_layout()
+        plt.figure(5)
+        if tt != '':
+            title = 'Cumulative Detuning STD\n' + tt
+            plt.title(title)
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Detuning STD [Hz]')
+        plt.plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label=label)
+        print(np.std(data))
+        plt.xlim(0, max_freq)
+        plt.ylim(bottom=0)
+        plt.legend(loc='upper right')
+        plt.tight_layout()
     plt.show()
 
 
@@ -162,5 +145,13 @@ if __name__ == "__main__":
                         default='')
 
     args = parser.parse_args()
+
+    if args.tt is None:
+        plt.rc('font', size=18)
+        plt.rc('axes', labelsize=18)    # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=16)    # fontsize of the tick labels
+        plt.rc('ytick', labelsize=16)    # fontsize of the tick labels
+        plt.rc('legend', fontsize=14)    # legend fontsize
+        plt.rc('figure', titlesize=18)  # fontsize of the figure title
 
     mp_plot(args.datafile, args.wsp, args.conf_file, args.tt)
