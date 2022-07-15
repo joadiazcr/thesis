@@ -127,6 +127,17 @@ def mp_plot(data_f, wsp, conf_f, tt):
         plt.ylim(bottom=0)
         plt.legend(loc='upper right')
         plt.tight_layout()
+
+        plt.figure(6)
+        if tt != '':
+            title = 'Spectrogram of Detuning\n' + tt
+            plt.title(title)
+        f, t, Sxx = signal.spectrogram(data, 1/dt)
+        plt.pcolormesh(t, f, Sxx, shading='gouraud')
+        plt.xlabel('Time [sec]')
+        plt.ylabel('Frequency [Hz]')
+        plt.tight_layout()
+
     plt.show()
 
 
