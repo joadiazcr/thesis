@@ -128,15 +128,15 @@ def mp_plot(data_f, wsp, conf_f, tt):
         plt.legend(loc='upper right')
         plt.tight_layout()
 
-        plt.figure(6)
-        if tt != '':
-            title = 'Spectrogram of Detuning\n' + tt
-            plt.title(title)
-        f, t, Sxx = signal.spectrogram(data, 1/dt)
-        plt.pcolormesh(t, f, Sxx, shading='gouraud')
-        plt.xlabel('Time [sec]')
-        plt.ylabel('Frequency [Hz]')
-        plt.tight_layout()
+    plt.figure(6)
+    if tt != '':
+        title = 'Spectrogram of Detuning\n' + tt
+        plt.title(title)
+    f, t, Sxx = signal.spectrogram(data_all[:, 1], 1/dt)
+    plt.pcolormesh(t, f, Sxx, shading='gouraud')
+    plt.xlabel('Time [sec]')
+    plt.ylabel('Frequency [Hz]')
+    plt.tight_layout()
 
     plt.show()
 
@@ -157,7 +157,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.tt is None:
+    if args.tt == '':
+        print("Changing font settings...")
         plt.rc('font', size=18)
         plt.rc('axes', labelsize=18)    # fontsize of the x and y labels
         plt.rc('xtick', labelsize=16)    # fontsize of the tick labels
