@@ -9,8 +9,6 @@ To plot raw data:
     (-cmom) plot_raw_CMHOMs
 
 TODO: Finis a nice description of this code
-TODO: cange ardcoded tile of plot_raw_CMOMs
-TODO: combine first four functions. Maybe even te 5t one
 '''
 
 import numpy as np
@@ -107,34 +105,6 @@ def plot_raw_data(data, device, mode):
             plt.plot(devs[mode-1][rep])
     if device == 'HOMs':
         plt.xlim([740, 810])  # Limits where you can find the HOM signal
-    plt.title(title)
-    plt.show()
-
-
-def plot_raw_HOMs(data, mode):
-    '''
-    Plots HOM data from CC1 and CC2.
-    Only applies for shifts 1 & 2
-    If mode is 0, plots first repetition (shot) for all HOMS.
-    If mode is not 0, plots all repetitions of HOM number <mode>.
-    '''
-    HOMs = data['HOMs']
-    num_HOMs = HOMs.shape[0]
-    reps = HOMs.shape[1]
-    points = HOMs.shape[2]  # num of bunches + 6
-    print('Num HOMs = ', num_HOMs)
-    print('Repetitions = ', reps)
-    print('Points = ', points)
-    if mode == 0:
-        title = 'All HOMs first shot'
-        for hom in range(0, num_HOMs):
-            plt.plot(HOMs[hom][0], label='HOM %s' % data['HOMs_List'][hom])
-            plt.legend()
-    else:
-        title = 'HOM ' + str(mode)
-        for rep in range(0, reps):
-            plt.plot(HOMs[mode-1][rep])
-    plt.xlim([740, 810])  # Limits where you can find the HOM signal
     plt.title(title)
     plt.show()
 
@@ -243,9 +213,20 @@ def process_BPM_data(data, bpm):
 
 
 def process_HOM_data(data):
+    print("Processing HOM data")
+    BPMs = data[bpm]
+    num_BPMs = BPMs.shape[0]
+    reps = BPMs.shape[1]
+    points = BPMs.shape[2]
+    print('Num BPMs = ', num_BPMs)
+    print('BPMs Repetitions = ', reps)
+    print('BPMs Points = ', points)
     HOMs = data['HOMs']
     num_HOMs = HOMs.shape[0]
     reps = HOMs.shape[1]
+    print('Num BPMs = ', num_BPMs)
+    print('BPMs Repetitions = ', reps)
+    print('BPMs Points = ', points)
 
     fig, axs = plt.subplots(2, 2)
     homs_pk_bsd_mean = np.zeros(num_HOMs)
