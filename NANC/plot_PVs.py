@@ -4,17 +4,22 @@ from datetime import datetime
 import numpy as np
 from datetime import timedelta
 
-
+d_fmt = "%m/%d/%Y %H:%M:%S.%f"
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
 
 def preprocess_data(datafile, pv):
-    df = pd.read_csv(datafile, sep='\t')
+    df = pd.read_csv(datafile, sep='\t',  index_col=False)
     try:
         df = df.drop(['Unnamed: 9'], axis=1)
     except KeyError:
         print("No Unnamed column")
+
+    try:
+        df = df.drop(['Status '], axis=1)
+    except KeyError:
+        print("No Status column")
 
     df = df.replace("BadVal", 0.0)
     df['Time'] = pd.to_datetime(df['Time'])
@@ -25,20 +30,11 @@ def preprocess_data(datafile, pv):
 
     df = df.astype({pref + pv: 'float'})
 
-#    df = df.astype({'ACCL:L3B:1610:PZT:AVDIFF:MEAN []': 'float'})
-#    df = df.astype({'ACCL:L3B:1610:PZT:BVDIFF:MEAN []': 'float'})
-#    df = df.astype({'ACCL:L3B:1610:PZT:DF:STD []': 'float'})
-#    df = df.astype({'ACCL:L3B:1610:DF [Hz]': 'float'})
-#    df = df.astype({'ACCL:L3B:1610:CAV:ASTD []': 'float'})
-#    df = df.astype({'ACCL:L3B:1610:DFBEST [Hz]': 'float'})
-#    df = df.astype({'ACCL:L3B:1610:CAV:PSTD []': 'float'})
-#    df = df.astype({'ACCL:L3B:1610:CAV:ARSTD []': 'float'})
-
+    print(pref)
     return df, pref
 
 
 def plot_data(df, pref, pv):
-    d_fmt = "%m/%d/%Y %H:%M:%S.%f"
     fault_start = []
     fault_end = []
     config_change = []
@@ -66,12 +62,9 @@ def plot_data(df, pref, pv):
        config_change.append(datetime.strptime("05/17/2022 18:56:00.00", d_fmt))
        config_change.append(datetime.strptime("05/17/2022 19:18:22.353620", d_fmt))
        config_change.append(datetime.strptime("05/17/2022 19:29:00.00", d_fmt))
-       configs = ['SEL\nFDBK OFF\nARC OFF',
-                  'SEL\nFDBK OFF\nARC ON',
-                  'SEL\nFDBK OFF\nARC OFF',
-                  'SEL\nFDBK ON\nARC OFF',
-                  'SEL\nFDBK ON\nARC ON',
-                  'SELAP\nFDBK ON\nARC ON',
+       configs = ['SEL\nFDBK OFF\nARC OFF', 'SEL\nFDBK OFF\nARC ON',
+                  'SEL\nFDBK OFF\nARC OFF', 'SEL\nFDBK ON\nARC OFF',
+                  'SEL\nFDBK ON\nARC ON', 'SELAP\nFDBK ON\nARC ON',
                   'SELAP\nFDBK ON\nARC OFF']
 
        micro_acq.append(datetime.strptime("05/17/2022 18:28:23.00000", d_fmt))
@@ -94,8 +87,7 @@ def plot_data(df, pref, pv):
        d = timedelta(minutes=6)
        config_change.append(datetime.strptime("05/17/2022 20:19:00.00", d_fmt))
        config_change.append(datetime.strptime("05/17/2022 20:27:00.00", d_fmt))
-       configs = ['SELAP\nFDBK ON\nARC OFF',
-                  'SELAP\nFDBK ON\nARC ON',
+       configs = ['SELAP\nFDBK ON\nARC OFF', 'SELAP\nFDBK ON\nARC ON',
                   'SELAP\nFDBK ON\nARC OFF']
  
        micro_acq.append(datetime.strptime("05/17/2022 20:24:09.00", d_fmt))
@@ -134,6 +126,54 @@ def plot_data(df, pref, pv):
     plt.show()
 
 
+def plot_CM31(df, pref, pv):
+    dfvg = pd.read_csv('~/NANC/microphonics/2K/CM31/CM31_VGXX', sep='\t',  index_col=False)
+    df1 = pd.read_csv('~/NANC/microphonics/2K/CM31/CM31_c1', sep='\t',  index_col=False)
+    df2 = pd.read_csv('~/NANC/microphonics/2K/CM31/CM31_c2', sep='\t',  index_col=False)
+    dfvg['Time'] = pd.to_datetime(dfvg['Time'])
+    df1['Time'] = pd.to_datetime(df1['Time'])
+    df2['Time'] = pd.to_datetime(df2['Time'])
+    fig,ax = plt.subplots()
+    lns1 = ax.plot(dfvg['Time'], dfvg['VGXX:L3B:3196:COMBO_P'], label='VGXX:L3B:3196:COMBO_P',
+            color='blue')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Torr')
+    ax2=ax.twinx()
+    lns2 = ax2.plot(df1['Time'], df1['ACCL:L3B:3110:DF:STD'], label='ACCL:L3B:3110:DF:STD',
+            color='orange')
+    lns3 = ax2.plot(df2['Time'], df2['ACCL:L3B:3120:DF:STD'], label='ACCL:L3B:3120:DF:STD',
+            color='red')
+    ax2.set_ylabel('Hz')
+    ax2.set_ylim(0,20)
+    lns = lns1+lns2+lns3
+    labs = [l.get_label() for l in lns]
+    ax.legend(lns, labs)
+    plt.xlim(dfvg['Time'][670],dfvg['Time'][3834])
+    plt.show()
+
+
+def plot_detail(df, pref, pv):
+    # This function stil does not work as intended
+    start_on = datetime.strptime("05/17/2022 20:20:00.00", d_fmt)
+    start_off = datetime.strptime("05/17/2022 20:30:00.00", d_fmt)
+    delta_time = timedelta(minutes=5)
+    delta_time = pd.Timedelta("0 days 00:00:00.00")
+
+    df['Time'] = df['Time'] - start_on
+    print(df['Time'].dtypes)
+    print(df['Time'])
+    ax = df.plot(x='Time', y=pref+pv,
+            xlim=(1246, 1700)
+                 #xlim=(timedelta(minutes=1), delta_time)
+                 )
+    import matplotlib.dates as mdates
+    from matplotlib.dates import DateFormatter
+#    ax.xaxis.set_major_formatter(mdates.DateFormatter('%M-%S'))
+    ax.xaxis.set_major_formatter(DateFormatter("%H:%M:%S"))
+#    plt.legend()
+    plt.show()
+
+
 if __name__ == "__main__":
 
     from argparse import ArgumentParser
@@ -149,4 +189,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     df, pref = preprocess_data(args.datafile, args.pv)
-    plot_data(df, pref, args.pv)
+    if '3110' in pref:
+        print('Plotting CM31 data')
+        plot_CM31(df, pref, args.pv)
+    else:
+        plot_data(df, pref, args.pv)
+    #plot_detail(df, pref, args.pv)
