@@ -56,7 +56,7 @@ def mp_plot(data_f, wsp, conf_f, tt):
     for i in conf:
         data = data_all[:, int(i)]
         label = conf[i]
-        print("jason %s, label %s" %(i, label))
+        print("json column %s, label %s" %(i, label))
         # FFT
         fft_raw = np.fft.fft(data)/len(data)
         fft = fft_raw*dt*N
@@ -69,6 +69,10 @@ def mp_plot(data_f, wsp, conf_f, tt):
         fft_raw[0] = 0
         c_d = np.sqrt(np.cumsum(abs(fft_raw**2)))*np.sqrt(2)
 
+        up_peak = np.amax(data)
+        lw_peak = np.amax(-data)
+        peak = max(up_peak, lw_peak)
+        print("Detuning peak: %s Hz" %peak)
         plt.figure(1)
         if tt != '':
             title = 'Cavity Detuning\n' + tt
@@ -122,7 +126,7 @@ def mp_plot(data_f, wsp, conf_f, tt):
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('Detuning STD [Hz]')
         plt.plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label=label)
-        print(np.std(data))
+        print("STD: %s" %(np.std(data)))
         plt.xlim(0, max_freq)
         plt.ylim(bottom=0)
         plt.legend(loc='upper right')
