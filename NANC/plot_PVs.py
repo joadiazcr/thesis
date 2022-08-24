@@ -134,21 +134,36 @@ def plot_CM31(df, pref, pv):
     df1['Time'] = pd.to_datetime(df1['Time'])
     df2['Time'] = pd.to_datetime(df2['Time'])
     fig,ax = plt.subplots()
-    lns1 = ax.plot(dfvg['Time'], dfvg['VGXX:L3B:3196:COMBO_P'], label='VGXX:L3B:3196:COMBO_P',
+    lns1 = ax.plot(dfvg['Time'], dfvg['VGXX:L3B:3196:COMBO_P'] * (10**6), label='Vacuum pressure',
             color='blue')
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Torr')
+    ax.set_xlabel('Time', fontsize=24)
+    ax.set_ylabel('Pressure [$\mu$Torr]', fontsize=24)
     ax2=ax.twinx()
-    lns2 = ax2.plot(df1['Time'], df1['ACCL:L3B:3110:DF:STD'], label='ACCL:L3B:3110:DF:STD',
+    lns2 = ax2.plot(df1['Time'], df1['ACCL:L3B:3110:DF:STD'], label='Cav 1',
             color='orange')
-    lns3 = ax2.plot(df2['Time'], df2['ACCL:L3B:3120:DF:STD'], label='ACCL:L3B:3120:DF:STD',
+    lns3 = ax2.plot(df2['Time'], df2['ACCL:L3B:3120:DF:STD'], label='Cav 2',
             color='red')
-    ax2.set_ylabel('Hz')
+    ax2.set_ylabel('Detuning STD [Hz]', fontsize=24)
     ax2.set_ylim(0,20)
     lns = lns1+lns2+lns3
     labs = [l.get_label() for l in lns]
-    ax.legend(lns, labs)
+    ax.legend(lns, labs, fontsize=18, loc='upper right')
     plt.xlim(dfvg['Time'][670],dfvg['Time'][3834])
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    import matplotlib.dates as mdates
+    myFmt = mdates.DateFormatter('%H:%M')
+    ax.xaxis.set_major_formatter(myFmt)
+    ax.tick_params(axis='y', labelsize=20)
+    ax.tick_params(axis='x', labelsize=20)
+    cc = "black"
+    ax2.axvline(x=dfvg['Time'][848],  color=cc, linestyle="--")
+    ax2.axvline(x=dfvg['Time'][1333],  color=cc, linestyle="--")
+    ax2.axvline(x=dfvg['Time'][2397],  color=cc, linestyle="--")
+    ax2.axvline(x=dfvg['Time'][2429],  color=cc, linestyle="--")
+    plt.text(dfvg['Time'][848+30],18.5,"Cav 1 ARC ON", fontsize=18, color=cc)
+    plt.text(dfvg['Time'][1333+30],18.5,"Cav 2 ARC ON", fontsize=18, color=cc)
+    plt.text(dfvg['Time'][2429+30],17.5,"Cav 1 \& Cav 2 ARC OFF\nfor 5 mins", fontsize=18, color=cc)
     plt.show()
 
 
@@ -184,9 +199,15 @@ if __name__ == "__main__":
                         help='StripTool data file')
     parser.add_argument('-p', '--pv', dest='pv', default='DFBEST [Hz]',
                         help='StripTool data file')
-
+    parser.add_argument('-latex', action="store_true",
+                         help='Plots are latex style')
 
     args = parser.parse_args()
+
+    if args.latex:
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif')
+        print("Using LATEX style")
 
     df, pref = preprocess_data(args.datafile, args.pv)
     if '3110' in pref:
