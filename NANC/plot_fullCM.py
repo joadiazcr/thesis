@@ -1,10 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import json
 from scipy.fft import fftfreq
 from scipy import signal
 from scipy.signal import butter, filtfilt
-from utils import read_metadata
 
 
 def butter_highpass_filter(data, cutoff, fs, order=5):
@@ -16,22 +14,15 @@ def butter_highpass_filter(data, cutoff, fs, order=5):
     """
     nyq = 0.5 * fs  # Nyquist Frequency
     normal_cutoff = cutoff / nyq
-    
-    # Get the filter coefficients 
+
+    # Get the filter coefficients
     b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    
+
     # Apply the filter
-    # 'filtfilt' is better than 'lfilter' because it applies the filter 
+    # 'filtfilt' is better than 'lfilter' because it applies the filter
     # twice (forward and backward) to eliminate phase shift/delay.
     y = filtfilt(b, a, data)
     return y
-
-
-def moving_average(data, window_size):
-    # 'valid' mode ensures the edges don't get weird padding
-    # but it will return an array shorter than the original by (window_size - 1)
-    weights = np.ones(window_size) / window_size
-    return np.convolve(data, weights, mode='valid')
 
 
 def psd_calc(y, dt):
@@ -63,7 +54,7 @@ def psd_calc(y, dt):
 def mp_plot(data_f, wsp, tt):
     data_all = np.loadtxt(data_f)
     N, nch = data_all.shape
-    print('data shape: %s X %s' %(N, nch))
+    print('data shape: %s X %s' % (N, nch))
     # Assume 2 kHz samp rate
     dt = wsp/2e3
     print(f'Samplig freq :\t{1/dt/1e3} kHz')
@@ -74,12 +65,24 @@ def mp_plot(data_f, wsp, tt):
     n_columns_per_file = 4
     num_cavities = 4
 
-    fig1, ax1 = plt.subplots(1,4,figsize=(20, 10), sharex=True, sharey=True, constrained_layout=True)
-    fig2, ax2 = plt.subplots(1,4,figsize=(20, 10), sharex=True, sharey=True, constrained_layout=True)
-    fig3, ax3 = plt.subplots(1,4,figsize=(20, 10), sharex=True, sharey=True, constrained_layout=True)
-    fig4, ax4 = plt.subplots(1,4,figsize=(20, 10), sharex=True, sharey=True, constrained_layout=True)
-    fig5, ax5 = plt.subplots(1,4,figsize=(20, 10), sharex=True, sharey=True, constrained_layout=True)
-    fig6, ax6 = plt.subplots(1,8,figsize=(20, 10), sharex=True, sharey=True, constrained_layout=True)
+    fig1, ax1 = plt.subplots(1, 4, figsize=(20, 10),
+                             sharex=True, sharey=True,
+                             constrained_layout=True)
+    fig2, ax2 = plt.subplots(1, 4, figsize=(20, 10),
+                             sharex=True, sharey=True,
+                             constrained_layout=True)
+    fig3, ax3 = plt.subplots(1, 4, figsize=(20, 10),
+                             sharex=True, sharey=True,
+                             constrained_layout=True)
+    fig4, ax4 = plt.subplots(1, 4, figsize=(20, 10),
+                             sharex=True, sharey=True,
+                             constrained_layout=True)
+    fig5, ax5 = plt.subplots(1, 4, figsize=(20, 10),
+                             sharex=True, sharey=True,
+                             constrained_layout=True)
+    fig6, ax6 = plt.subplots(1, 8, figsize=(20, 10),
+                             sharex=True, sharey=True,
+                             constrained_layout=True)
 
     for i in range(num_cavities):
         print(f'Cavity {i+1}')
@@ -121,11 +124,11 @@ def mp_plot(data_f, wsp, tt):
         print(f'Detuning STD NANC ON:\t{np.std(data_on):.2f} Hz\n')
 
         r = int(i/4)
-        c = i%4
+        c = i % 4
 
         # Plot detuning
-        ax1[c].plot(t_base, data, label = 'NANC OFF')
-        ax1[c].plot(t_base, data_on, label = 'NANC ON CAV1')
+        ax1[c].plot(t_base, data, label='NANC OFF')
+        ax1[c].plot(t_base, data_on, label='NANC ON CAV1')
         ax1[c].set_title(f'Cavity {i+1}', fontsize=16)
         if r == 1:
             ax1[c].set_xlabel('Time [s]')
@@ -144,8 +147,8 @@ def mp_plot(data_f, wsp, tt):
         ax2[c].set_xlim(0, max_freq)
 
         # Plot PSD
-        ax3[c].semilogy(freq[1:], psd[1:], label = f'cav{i+1}')
-        ax3[c].semilogy(freq[1:], psd_on[1:], label = f'cav{i+1}')
+        ax3[c].semilogy(freq[1:], psd[1:], label=f'cav{i+1}')
+        ax3[c].semilogy(freq[1:], psd_on[1:], label=f'cav{i+1}')
         ax3[c].set_title(f'Cavity {i+1}', fontsize=16)
         if r == 1:
             ax2[c].set_xlabel('Frequency [Hz]')
@@ -154,8 +157,10 @@ def mp_plot(data_f, wsp, tt):
         ax3[c].set_xlim(0, max_freq)
 
         # Plot histogram
-        ax4[c].hist(data, bins=140,  histtype='step', log='True', label = f'cav{i+1}')
-        ax4[c].hist(data_on, bins=140,  histtype='step', log='True', label = f'cav{i+1}')
+        ax4[c].hist(data, bins=140,  histtype='step', log='True',
+                    label=f'cav{i+1}')
+        ax4[c].hist(data_on, bins=140,  histtype='step', log='True',
+                    label=f'cav{i+1}')
         ax4[c].set_title(f'Cavity {i+1}', fontsize=16)
         if r == 1:
             ax4[c].set_xlabel('Detuning [Hz]')
@@ -165,20 +170,24 @@ def mp_plot(data_f, wsp, tt):
         ax4[c].axvline(x=10, color='r', linestyle='--', alpha=0.3)
 
         # Plot STD
-        ax5[c].plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label = f'cav{i+1}')
-        ax5[c].plot(fftfreq(N, dt)[:N//2], c_d_on[:N//2], label = f'cav{i+1}')
+        ax5[c].plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label=f'cav{i+1}')
+        ax5[c].plot(fftfreq(N, dt)[:N//2], c_d_on[:N//2], label=f'cav{i+1}')
         ax5[c].set_title(f'Cavity {i+1}', fontsize=16)
         if r == 1:
             ax5[c].set_xlabel('Frequency [Hz]')
         if c == 0:
-            ax5[c].set_ylabel('Detuning STD [Hz]')    
+            ax5[c].set_ylabel('Detuning STD [Hz]')
         ax5[c].set_xlim(0, max_freq)
 
         # Plot Spectrogram
         f, t, Sxx = signal.spectrogram(data, 1/dt, nperseg=1024, noverlap=768)
-        f_on, t_on, Sxx_on = signal.spectrogram(data_on, 1/dt, nperseg=1024, noverlap=768)
-        ax6[(c*2)].pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud', cmap='viridis', vmin=-100, vmax=0)
-        ax6[(c*2)+1].pcolormesh(t_on, f_on, 10 * np.log10(Sxx_on), shading='gouraud', cmap='viridis', vmin=-100, vmax=0)
+        f_on, t_on, Sxx_on = signal.spectrogram(data_on, 1/dt,
+                                                nperseg=1024, noverlap=768)
+        ax6[(c*2)].pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud',
+                              cmap='viridis', vmin=-100, vmax=0)
+        ax6[(c*2)+1].pcolormesh(t_on, f_on, 10 * np.log10(Sxx_on),
+                                shading='gouraud',
+                                cmap='viridis', vmin=-100, vmax=0)
         ax6[(c*2)].set_title(f'Cavity {i+1}', fontsize=16)
         ax6[(c*2)+1].set_title(f'Cavity {i+1} - NANC ON CAV1', fontsize=16)
         if r == 1:
@@ -186,7 +195,7 @@ def mp_plot(data_f, wsp, tt):
             ax6[(c*2)+1].set_xlabel('Time [s]')
         if c == 0:
             ax6[c].set_ylabel('Frequency [Hz]')
-        ax6[c].set_ylim([0,100])
+        ax6[c].set_ylim([0, 100])
 
     handles, labels = ax1[0].get_legend_handles_labels()
     fig1.legend(handles, labels, loc='upper center', fontsize=16, ncol=2)
@@ -200,7 +209,6 @@ def mp_plot(data_f, wsp, tt):
     fig5.legend(handles, labels, loc='upper center', fontsize=16, ncol=2)
     fig5.get_layout_engine().set(h_pad=0.2, w_pad=0.2, rect=(0, 0, 1, 0.95))
 
-    #plt.tight_layout() # This helps prevent the title/legend from overlapping plots
     plt.show()
 
 
