@@ -4,6 +4,14 @@ from scipy.fft import fftfreq
 from scipy import signal
 from scipy.signal import butter, filtfilt
 
+plt.rc('font', family='serif', size=18)
+plt.rc('mathtext', fontset='cm')
+plt.rc('axes', labelsize=18)
+plt.rc('xtick', labelsize=16)
+plt.rc('ytick', labelsize=16)
+plt.rc('legend', fontsize=14)
+plt.rc('figure', titlesize=18)
+
 
 def butter_highpass_filter(data, cutoff, fs, order=5):
     """
@@ -51,7 +59,7 @@ def psd_calc(y, dt):
     return freq, psd, psd_integral
 
 
-def mp_plot(data_f, wsp, tt):
+def mp_plot(data_f, wsp, tt, num_cavities):
     data_all = np.loadtxt(data_f)
     N, nch = data_all.shape
     print('data shape: %s X %s' % (N, nch))
@@ -219,20 +227,13 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="Microphonics plotter")
     parser.add_argument('-f', '--file', dest='datafile', required=True,
                         help='Waveform data file')
-    parser.add_argument('-wsp', '--wave_samp_per', dest='wsp', default=1,
+    parser.add_argument('-wsp', '--wave_samp_per', dest='wsp', required=True,
                         type=int, help='Waveform decimation factor')
+    parser.add_argument('-n', '--num_cavs', required=True,
+                        type=int, help='Number of cavities')
     parser.add_argument('-t', '--title', dest='tt', help='Plot Title',
                         default='')
 
     args = parser.parse_args()
 
-    if args.tt == '':
-        print("Changing font settings...")
-        plt.rc('font', size=18)
-        plt.rc('axes', labelsize=18)    # fontsize of the x and y labels
-        plt.rc('xtick', labelsize=16)    # fontsize of the tick labels
-        plt.rc('ytick', labelsize=16)    # fontsize of the tick labels
-        plt.rc('legend', fontsize=14)    # legend fontsize
-        plt.rc('figure', titlesize=18)  # fontsize of the figure title
-
-    mp_plot(args.datafile, args.wsp, args.tt)
+    mp_plot(args.datafile, args.wsp, args.tt, args.num_cavs)
