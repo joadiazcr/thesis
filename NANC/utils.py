@@ -1,3 +1,6 @@
+from scipy.signal import butter, filtfilt
+
+
 def read_metadata(data_f):
     metadata = {}
     cav_num = 0
@@ -10,8 +13,8 @@ def read_metadata(data_f):
                 last_line = True
             else:
                 clean_line = line.lstrip('#').strip()
-                
-                if last_line == False:
+
+                if last_line is False:
                     if clean_line.startswith('##'):
                         cav_num += 1
                         metadata[f'CAV{cav_num}'] = {}
@@ -33,3 +36,23 @@ def read_metadata(data_f):
                     columns = [pv.split(':')[-2] for pv in pv_list]
                     metadata['columns'] = columns
     return metadata
+
+
+def butter_highpass_filter(data, cutoff, fs, order=5):
+    """
+    data: Your input signal
+    cutoff: The frequency below which signals are blocked (Hz)
+    fs: The sampling rate of your data (Hz)
+    order: The 'steepness' of the filter
+    """
+    nyq = 0.5 * fs  # Nyquist Frequency
+    normal_cutoff = cutoff / nyq
+
+    # Get the filter coefficients
+    b, a = butter(order, normal_cutoff, btype='high', analog=False)
+
+    # Apply the filter
+    # 'filtfilt' is better than 'lfilter' because it applies the filter
+    # twice (forward and backward) to eliminate phase shift/delay.
+    y = filtfilt(b, a, data)
+    return y

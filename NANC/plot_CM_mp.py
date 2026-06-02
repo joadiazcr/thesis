@@ -1,30 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import json
 from scipy.fft import fftfreq
 from scipy import signal
-from scipy.signal import butter, filtfilt
-from utils import read_metadata
-
-
-def butter_highpass_filter(data, cutoff, fs, order=5):
-    """
-    data: Your input signal
-    cutoff: The frequency below which signals are blocked (Hz)
-    fs: The sampling rate of your data (Hz)
-    order: The 'steepness' of the filter
-    """
-    nyq = 0.5 * fs  # Nyquist Frequency
-    normal_cutoff = cutoff / nyq
-    
-    # Get the filter coefficients 
-    b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    
-    # Apply the filter
-    # 'filtfilt' is better than 'lfilter' because it applies the filter 
-    # twice (forward and backward) to eliminate phase shift/delay.
-    y = filtfilt(b, a, data)
-    return y
+from utils import read_metadata, butter_highpass_filter
 
 
 def moving_average(data, window_size):
@@ -60,13 +38,13 @@ def psd_calc(y, dt):
     return freq, psd, psd_integral
 
 
-def mp_plot(data_f, wsp, tt):
+def mp_plot(data_f, wsp, tt, low_pass_filter=False):
     metadata = read_metadata(data_f)
     wsp = metadata['CAV1']['wave_samp_per']
 
     data_all = np.loadtxt(data_f)
     N, nch = data_all.shape
-    print('data shape: %s X %s' %(N, nch))
+    print('data shape: %s X %s' % (N, nch))
     print('Columns:\t' + ' | '.join(metadata['columns']))
     print(f'wsp :\t\t{wsp}\n')
     # Assume 2 kHz samp rate
@@ -81,8 +59,10 @@ def mp_plot(data_f, wsp, tt):
         data_cav = data_all[:, int((i*4)+1)]
         cav_number = metadata[f'CAV{i+1}']['cav_number']
         print(f'Cavity {cav_number}')
-        #data = butter_highpass_filter(data_cav, 1.0, 1/dt)
-        data = data_cav
+        if low_pass_filter:
+            data = butter_highpass_filter(data_cav, 1.0, 1/dt)
+        else:
+            data = data_cav
         window_size = 10000
         #data_lp = moving_average(np.abs(data), window_size)
         # FFT
@@ -108,7 +88,7 @@ def mp_plot(data_f, wsp, tt):
             plt.title(title)
         plt.xlabel('Time [s]')
         plt.ylabel('Detuning [Hz]')
-        plt.plot(t_base, data, label = f'cav{cav_number}', alpha=0.5)
+        plt.plot(t_base, data, label=f'cav{cav_number}', alpha=0.5)
         #plt.plot(t_base[:-window_size+1], data_lp, label = f'cav{i+7} LP', alpha=0.5)
         plt.axhline(y=-10, color='r', linestyle='--', alpha=0.3)
         plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
@@ -121,7 +101,7 @@ def mp_plot(data_f, wsp, tt):
             title = 'Cavity Detuning Spectrum\n' + tt
             plt.title(title)
         plt.xlabel('Frequency [Hz]')
-        plt.plot(xf, 2.0/N * np.abs(fft[0:N//2]), label = f'cav{cav_number}')
+        plt.plot(xf, 2.0/N * np.abs(fft[0:N//2]), label=f'cav{cav_number}')
         plt.xlim(0, max_freq)
         plt.legend(loc='upper right')
         plt.tight_layout()
@@ -132,7 +112,7 @@ def mp_plot(data_f, wsp, tt):
             plt.title(title)
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('Detuning PSD [Hz]')
-        plt.semilogy(freq[1:], psd[1:], label = f'cav{cav_number}')
+        plt.semilogy(freq[1:], psd[1:], label=f'cav{cav_number}')
         plt.xlim(0, max_freq)
         plt.legend(loc='upper right')
         plt.tight_layout()
@@ -143,7 +123,7 @@ def mp_plot(data_f, wsp, tt):
             plt.title(title)
         plt.xlabel('Detuning [Hz]')
         plt.ylabel('Counts')
-        plt.hist(data, bins=140,  histtype='step', log='True', label = f'cav{cav_number}')
+        plt.hist(data, bins=140,  histtype='step', log='True', label=f'cav{cav_number}')
         plt.axvline(x=-10, color='r', linestyle='--', alpha=0.3)
         plt.axvline(x=10, color='r', linestyle='--', alpha=0.3)
         plt.legend(loc='upper right')
@@ -155,9 +135,9 @@ def mp_plot(data_f, wsp, tt):
             plt.title(title)
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('Detuning STD [Hz]')
-        plt.plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label = f'cav{cav_number}')
+        plt.plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label=f'cav{cav_number}')
         plt.xlim(0, max_freq)
-        plt.ylim((0,20))
+        plt.ylim((0, 20))
         plt.legend(loc='upper right')
         plt.tight_layout()
 
@@ -174,9 +154,9 @@ def mp_plot(data_f, wsp, tt):
         axes[i].set_title(f'cav{cav_number}')
         if i == 0:
             axes[i].set_ylabel('Frequency [Hz]')
-        axes[i].set_ylim([0,100])
+        axes[i].set_ylim([0, 100])
 
-    #plt.show()
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -190,6 +170,8 @@ if __name__ == "__main__":
                         type=int, help='Waveform decimation factor')
     parser.add_argument('-t', '--title', dest='tt', help='Plot Title',
                         default='')
+    parser.add_argument("-l", "--low_pass_filter", action="store_true", dest="low_pass_filter", default=False,
+                        help="Apply low-pass filter. Default is no filter.")
 
     args = parser.parse_args()
 
@@ -202,4 +184,4 @@ if __name__ == "__main__":
         plt.rc('legend', fontsize=14)    # legend fontsize
         plt.rc('figure', titlesize=18)  # fontsize of the figure title
 
-    mp_plot(args.datafile, args.wsp, args.tt)
+    mp_plot(args.datafile, args.wsp, args.tt, args.low_pass_filter)
