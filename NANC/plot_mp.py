@@ -3,10 +3,11 @@ import matplotlib.pyplot as plt
 import json
 from scipy.fft import fftfreq
 from scipy import signal
+from utils import butter_highpass_filter
 
 
-#plt.rc('text', usetex=True)
-#plt.rc('font', family='serif')
+plt.rc('font', family='serif')
+plt.rc('mathtext', fontset='cm')
 
 
 def psd_calc(y, dt):
@@ -35,11 +36,11 @@ def psd_calc(y, dt):
     return freq, psd, psd_integral
 
 
-def mp_plot(data_f, wsp, conf_f, tt):
+def mp_plot(data_f, wsp, conf_f, tt, low_pass_filter=False):
 
     data_all = np.loadtxt(data_f)
     N, nch = data_all.shape
-    print('data shape: %s X %s' %(N, nch))
+    print('data shape: %s X %s' % (N, nch))
     # Assume 2 kHz samp rate
     dt = wsp/2e3
     t_base = np.arange(0, dt*N, dt)
@@ -53,14 +54,15 @@ def mp_plot(data_f, wsp, conf_f, tt):
         exps = np.append(exps, i)
         labels = np.append(labels, conf[i])
 
-    n_columns_per_file = 2
-
+    n_columns_per_cav = 4
     for i in conf:
-        print(i)
-        print(data_all.shape)
-        data = data_all[:, int((int(i)*n_columns_per_file)+1)]
+        data_cav = data_all[:, int((int(i)*n_columns_per_cav)+1)]
         label = conf[i]
-        print("json column %s, label %s" %(i, label))
+        print(label)
+        if low_pass_filter:
+            data = butter_highpass_filter(data_cav, 1.0, 1/dt)
+        else:
+            data = data_cav
         # FFT
         fft_raw = np.fft.fft(data)/len(data)
         fft = fft_raw*dt*N
@@ -76,7 +78,8 @@ def mp_plot(data_f, wsp, conf_f, tt):
         up_peak = np.amax(data)
         lw_peak = np.amax(-data)
         peak = max(up_peak, lw_peak)
-        print("Detuning peak: %s Hz" %peak)
+        print(f'Peak detuning:\t{peak:.2f} Hz')
+        print(f'Detuning STD:\t{np.std(data):.2f} Hz\n')
         plt.figure(1)
         if tt != '':
             title = 'Cavity Detuning\n' + tt
@@ -130,23 +133,27 @@ def mp_plot(data_f, wsp, conf_f, tt):
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('Detuning STD [Hz]')
         plt.plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label=label)
-        print("STD: %s" %(np.std(data)))
         plt.xlim(0, max_freq)
-        plt.ylim((0,50))
+        plt.ylim((0, 20))
         plt.legend(loc='upper right')
         plt.tight_layout()
 
     nc = len(conf)
     fig, axes = plt.subplots(1, nc, figsize=(16, 5), sharey=True)
     plt.subplots_adjust(wspace=0)
-    for i in range(nc):
-        data_cav = data_all[:, int((i*n_columns_per_file)+1)]
-        f, t, Sxx = signal.spectrogram(data_cav, 1/dt, nperseg=1000, noverlap=750)
-        axes[i].pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud', cmap='viridis', vmin=-100, vmax=0)
-        axes[i].set_xlabel('Time [sec]')
-        if i == 0:
-            axes[i].set_ylabel('Frequency [Hz]')
-        axes[i].set_ylim([0,100])
+    for i in conf:
+        j = int(i)
+        label = conf[i]
+        data_cav = data_all[:, int((j*n_columns_per_cav)+1)]
+        f, t, Sxx = signal.spectrogram(data_cav, 1/dt,
+                                       nperseg=1000, noverlap=750)
+        axes[j].pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud',
+                           cmap='viridis', vmin=-100, vmax=0)
+        axes[j].set_title(label=label, size=16)
+        axes[j].set_xlabel('Time [sec]')
+        if j == 0:
+            axes[j].set_ylabel('Frequency [Hz]')
+        axes[j].set_ylim([0, 100])
 
     plt.show()
 
@@ -164,6 +171,9 @@ if __name__ == "__main__":
                         help='Configuration File')
     parser.add_argument('-t', '--title', dest='tt', help='Plot Title',
                         default='')
+    parser.add_argument("-l", "--low_pass_filter", action="store_true",
+                        dest="low_pass_filter", default=False,
+                        help="Apply low-pass filter. Default is no filter.")
 
     args = parser.parse_args()
 
@@ -176,4 +186,5 @@ if __name__ == "__main__":
         plt.rc('legend', fontsize=14)    # legend fontsize
         plt.rc('figure', titlesize=18)  # fontsize of the figure title
 
-    mp_plot(args.datafile, args.wsp, args.conf_file, args.tt)
+    mp_plot(args.datafile, args.wsp, args.conf_file,
+            args.tt, args.low_pass_filter)
