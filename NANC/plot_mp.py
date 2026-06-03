@@ -40,9 +40,12 @@ def mp_plot(data_f, wsp, conf_f, tt, low_pass_filter=False):
 
     data_all = np.loadtxt(data_f)
     N, nch = data_all.shape
-    print('data shape: %s X %s' % (N, nch))
+    print(f'Data shape: {N} X {nch}\n')
+    print(f'wsp :\t\t{wsp}')
     # Assume 2 kHz samp rate
     dt = wsp/2e3
+    print(f'Samplig freq :\t{1/dt/1e3} kHz')
+    print(f'Time length:\t{N*dt:.2f} seconds\n')
     t_base = np.arange(0, dt*N, dt)
     max_freq = 250
 
@@ -141,10 +144,9 @@ def mp_plot(data_f, wsp, conf_f, tt, low_pass_filter=False):
     nc = len(conf)
     fig, axes = plt.subplots(1, nc, figsize=(16, 5), sharey=True)
     plt.subplots_adjust(wspace=0)
-    for i in conf:
-        j = int(i)
-        label = conf[i]
-        data_cav = data_all[:, int((j*n_columns_per_cav)+1)]
+    for j, c in enumerate(conf):
+        label = conf[c]
+        data_cav = data_all[:, int((int(c)*n_columns_per_cav)+1)]
         f, t, Sxx = signal.spectrogram(data_cav, 1/dt,
                                        nperseg=1000, noverlap=750)
         axes[j].pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud',
