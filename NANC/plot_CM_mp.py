@@ -5,9 +5,14 @@ from scipy import signal
 from utils import read_metadata, butter_highpass_filter
 
 
+plt.rc('font', family='serif')
+plt.rc('mathtext', fontset='cm')
+
+
 def moving_average(data, window_size):
     # 'valid' mode ensures the edges don't get weird padding
-    # but it will return an array shorter than the original by (window_size - 1)
+    # but it will return an array shorter
+    # than the original by (window_size - 1)
     weights = np.ones(window_size) / window_size
     return np.convolve(data, weights, mode='valid')
 
@@ -46,7 +51,7 @@ def mp_plot(data_f, wsp, tt, low_pass_filter=False):
     N, nch = data_all.shape
     print('data shape: %s X %s' % (N, nch))
     print('Columns:\t' + ' | '.join(metadata['columns']))
-    print(f'wsp :\t\t{wsp}\n')
+    print(f'wsp :\t\t{wsp}')
     # Assume 2 kHz samp rate
     dt = wsp/2e3
     print(f'Samplig freq :\t{1/dt/1e3} kHz')
@@ -63,8 +68,8 @@ def mp_plot(data_f, wsp, tt, low_pass_filter=False):
             data = butter_highpass_filter(data_cav, 1.0, 1/dt)
         else:
             data = data_cav
-        window_size = 10000
-        #data_lp = moving_average(np.abs(data), window_size)
+        # window_size = 10000
+        # data_lp = moving_average(np.abs(data), window_size)
         # FFT
         fft_raw = np.fft.fft(data)/len(data)
         fft = fft_raw*dt*N
@@ -89,7 +94,8 @@ def mp_plot(data_f, wsp, tt, low_pass_filter=False):
         plt.xlabel('Time [s]')
         plt.ylabel('Detuning [Hz]')
         plt.plot(t_base, data, label=f'cav{cav_number}', alpha=0.5)
-        #plt.plot(t_base[:-window_size+1], data_lp, label = f'cav{i+7} LP', alpha=0.5)
+        # plt.plot(t_base[:-window_size+1], data_lp,
+        #         label = f'cav{i+7} LP', alpha=0.5)
         plt.axhline(y=-10, color='r', linestyle='--', alpha=0.3)
         plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
         plt.xlim(t_base[0], t_base[-1])
@@ -123,7 +129,8 @@ def mp_plot(data_f, wsp, tt, low_pass_filter=False):
             plt.title(title)
         plt.xlabel('Detuning [Hz]')
         plt.ylabel('Counts')
-        plt.hist(data, bins=140,  histtype='step', log='True', label=f'cav{cav_number}')
+        plt.hist(data, bins=140,  histtype='step',
+                 log='True', label=f'cav{cav_number}')
         plt.axvline(x=-10, color='r', linestyle='--', alpha=0.3)
         plt.axvline(x=10, color='r', linestyle='--', alpha=0.3)
         plt.legend(loc='upper right')
@@ -137,7 +144,7 @@ def mp_plot(data_f, wsp, tt, low_pass_filter=False):
         plt.ylabel('Detuning STD [Hz]')
         plt.plot(fftfreq(N, dt)[:N//2], c_d[:N//2], label=f'cav{cav_number}')
         plt.xlim(0, max_freq)
-        plt.ylim((0, 20))
+        plt.ylim((0, 5))
         plt.legend(loc='upper right')
         plt.tight_layout()
 
@@ -146,10 +153,13 @@ def mp_plot(data_f, wsp, tt, low_pass_filter=False):
     for i in range(num_cavities):
         cav_number = metadata[f'CAV{i+1}']['cav_number']
         data = data_all[:, int((i*4)+1)]
-        #data = butter_highpass_filter(data_cav, 1.0, 1/dt)
-        #f, t, Sxx = signal.spectrogram(data, 1/dt, nperseg=20000, noverlap=15000)
-        f, t, Sxx = signal.spectrogram(data, 1/dt, nperseg=1024, noverlap=768)
-        axes[i].pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud', cmap='viridis', vmin=-100, vmax=0)
+        # data = butter_highpass_filter(data_cav, 1.0, 1/dt)
+        # f, t, Sxx = signal.spectrogram(data, 1/dt, nperseg=20000,
+        #                                noverlap=15000)
+        f, t, Sxx = signal.spectrogram(data, 1/dt, nperseg=1024,
+                                       noverlap=768)
+        axes[i].pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud',
+                           cmap='viridis', vmin=-100, vmax=0)
         axes[i].set_xlabel('Time [sec]')
         axes[i].set_title(f'cav{cav_number}')
         if i == 0:
@@ -170,7 +180,8 @@ if __name__ == "__main__":
                         type=int, help='Waveform decimation factor')
     parser.add_argument('-t', '--title', dest='tt', help='Plot Title',
                         default='')
-    parser.add_argument("-l", "--low_pass_filter", action="store_true", dest="low_pass_filter", default=False,
+    parser.add_argument("-l", "--low_pass_filter", action="store_true",
+                        dest="low_pass_filter", default=False,
                         help="Apply low-pass filter. Default is no filter.")
 
     args = parser.parse_args()
