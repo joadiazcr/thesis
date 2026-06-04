@@ -27,13 +27,14 @@ class Wf:
         self.folded = self.folded - np.mean(self.folded)
         self.len = len(self.folded)
 
-    def compute_fft(self):
+    def compute_fft(self, plot=False):
         fft_raw = np.fft.fft(self.folded)/self.len
         self.fft = fft_raw * self.dt * self.len
         self.xf = fftfreq(self.len, self.dt)[:self.len//2]
-        plt.title(f"{self.name}")
-        plt.plot(self.xf, 2.0/self.len * np.abs(self.fft[0:self.len//2]))
-        plt.show()
+        if plot:
+            plt.title(f"{self.name}")
+            plt.plot(self.xf, 2.0/self.len * np.abs(self.fft[0:self.len//2]))
+            plt.show()
 
 
 class ResData():
@@ -53,16 +54,7 @@ class ResData():
 
         self.p_dac = Wf(self.data[0], self.dt, self.count, 'Piezo DAC')
         self.detuning = Wf(self.data[1], self.dt, self.count, 'Detuning')
-
-        self.compute_fft()
-
-    def compute_fft(self):
-        self.fft = np.zeros((self.num_colums, self.data_len), dtype=complex)
-        for i in range(self.num_colums):
-            print(self.data[i])
-            fft_raw = np.fft.fft(self.data[i])/self.data_len
-            self.fft[i] = fft_raw * self.dt * self.data_len
-        self.xf = fftfreq(self.data_len, self.dt)[:self.data_len//2]
+        self.tf()
 
     def plot_raw_data(self, start, end):
         fig, axs = plt.subplots(self.num_colums, 1)
@@ -74,25 +66,30 @@ class ResData():
         axs[self.num_colums-1].set_xlabel("Time [seconds]")
         plt.show()
 
-    def plot_fft(self):
-        fig, axs = plt.subplots(self.num_colums, 1)
-        y_labels = ['DAC', 'Detuning [Hz]', 'AVDIFF [V]', 'BVDIFF [V]']
-        for i in range(4):
-            axs[i].plot(self.xf,
-                        2.0/self.data_len * np.abs(self.fft[i][0:self.data_len//2]))
-            axs[i].set_ylabel(y_labels[i])
-        axs[self.num_colums-1].set_xlabel("Frequency [Hz]")
-        plt.show()
+    def tf(self):
+        det_fft = self.detuning.fft[0:self.p_dac.len//2]
+        p_dac_fft = self.p_dac.fft[0:self.p_dac.len//2]
+        self.tf_real = np.real(det_fft/p_dac_fft)
+        self.tf_imag = np.imag(det_fft/p_dac_fft)
+        self.tf_mag = np.sqrt(self.tf_real**2 + self.tf_imag**2)
+        self.tf_phs = np.unwrap(np.arctan2(self.tf_imag, self.tf_real))
 
     def plot_tf(self, start, end):
-        sf = int(start/self.df)
-        ef = int(end/self.df)
-        plt.plot(self.xf[sf:ef], np.real(self.fft[1][0:self.data_len//2]/self.fft[0][0:self.data_len//2])[sf:ef])
-        plt.plot(self.xf[sf:ef], np.imag(self.fft[1][0:self.data_len//2]/self.fft[0][0:self.data_len//2])[sf:ef])
+        amp_max = np.max(self.tf_mag[start:end*3])
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('A [Hz/V]')
+        plt.plot(self.p_dac.xf, self.tf_real, label='Real')
+        plt.plot(self.p_dac.xf, self.tf_imag, label='Imaginary')
+        plt.xlim(start, end)
+        plt.ylim(-1.1 * amp_max, 1.1 * amp_max)
+        plt.legend()
         plt.show()
 
-        plt.plot(self.p_dac.xf, np.real(self.detuning.fft[0:self.p_dac.len//2]/self.p_dac.fft[0:self.p_dac.len//2]))
-        plt.plot(self.p_dac.xf, np.imag(self.detuning.fft[0:self.p_dac.len//2]/self.p_dac.fft[0:self.p_dac.len//2]))
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('A [Hz/V]')
+        plt.plot(self.p_dac.xf, self.tf_mag)
+        plt.xlim(start, end)
+        plt.ylim(0, 1.1 * amp_max)
         plt.show()
 
 
@@ -112,10 +109,8 @@ if __name__ == "__main__":
     res_data = ResData(args.datafile, args.count, args.wsp)
 
     start = 0
-    end = res_data.data_len
+    end = 80
     res_data.plot_raw_data(start, end)
-    res_data.plot_fft()
-    f_start = 20
-    f_end = 300
+    f_start = 1
+    f_end = 80
     res_data.plot_tf(f_start, f_end)
-    
