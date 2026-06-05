@@ -5,16 +5,21 @@ import sys
 
 def stack_res_files(file_list, output_file):
     arrays = []
+    ss = []
     for f in file_list:
         path = Path(f)
         if path.is_file():
             data = np.loadtxt(f)
-            print(f'{data.shape} {f}')
+            s, c = data.shape
+            print(f'{s} X {c} {f}')
             arrays.append(data)
+            ss.append(s)
         else:
             sys.exit(f'Error: {f} does not exist!')
             exit()
 
+    s_final = min(ss)
+    arrays = [arr[:s_final, :] for arr in arrays]
     data_total = np.column_stack(arrays)
     np.savetxt(output_file, data_total, fmt="%.6f")
     print(f'\n{data_total.shape} {output_file}')
