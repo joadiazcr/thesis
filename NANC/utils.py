@@ -1,4 +1,6 @@
 from scipy.signal import butter, filtfilt
+from scipy.signal import find_peaks
+import numpy as np
 
 
 def read_metadata(data_f):
@@ -56,3 +58,14 @@ def butter_highpass_filter(data, cutoff, fs, order=5):
     # twice (forward and backward) to eliminate phase shift/delay.
     y = filtfilt(b, a, data)
     return y
+
+
+def peak_finder(data):
+    indices, properties = find_peaks(data, height=0.0001)
+    peak_heights = properties['peak_heights']
+    top_10_idx_in_peaks = np.argsort(peak_heights)[-10:][::-1]
+
+    actual_indices = indices[top_10_idx_in_peaks]
+    actual_heights = peak_heights[top_10_idx_in_peaks]
+
+    return actual_heights, actual_indices

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
-from utils import read_metadata
+from utils import peak_finder, read_metadata
 from plot_TF import ResData
 
 
@@ -31,8 +31,8 @@ if __name__ == "__main__":
     files = [f for f in dir_path.iterdir() if f.is_file()]
     files.sort(key=lambda f: f.name)
 
-    nom_low_freq = 1
-    nom_high_freq = 80
+    nom_low_freq = 80
+    nom_high_freq = 200
     amp_max = 0
     fig1 = plt.figure(figsize=(19.2, 10.8), dpi=100)
     fig2 = plt.figure(figsize=(19.2, 10.8), dpi=100)
@@ -51,9 +51,13 @@ if __name__ == "__main__":
             if amp_max_t > amp_max:
                 amp_max = amp_max_t
                 print(amp_max)
+            peaks, peaks_idx = peak_finder(res_data.tf_mag[nom_low_freq*2:nom_high_freq*5])
             plt.figure(fig1.number)
             plt.plot(res_data.p_dac.xf, res_data.tf_mag,
-                     linewidth=2, label=f'cav{cav_num}')
+                     linewidth=3, label=f'cav{cav_num}')
+                     #label=f'cav{cav_num} ({res_data.p_dac.xf[peaks_idx[0]]:.2f} Hz)')
+            #plt.scatter(res_data.p_dac.xf[peaks_idx][0]+(2*res_data.df), peaks[0],
+            #            s=100, marker='*')
             plt.figure(fig2.number)
             plt.plot(res_data.p_dac.xf, res_data.tf_phs,
                      linewidth=2, label=f'cav{cav_num}')
@@ -61,7 +65,8 @@ if __name__ == "__main__":
     plt.figure(fig1.number)
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('A [Hz/V]')
-    plt.ylim(0, 1.1 * amp_max)
+    # plt.ylim(0, 1.1 * amp_max)
+    plt.ylim(0, 20000)
     plt.xlim(nom_low_freq, nom_high_freq)
     plt.legend()
 
