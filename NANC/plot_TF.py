@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fft import fftfreq
+import re
+from datetime import datetime
 
 
 plt.rc('font', family='serif')
@@ -19,17 +21,21 @@ class Wf:
         self.name = name
         self.count = count
         self.fold()
-        self.compute_fft()
+        self.compute_fft(plot=False)
 
     def fold(self):
-        self.folded = np.reshape(self.raw, (self.count, -1))
-        self.folded = np.mean(self.folded, axis=0)
-        self.folded = self.folded - np.mean(self.folded)
+        if True:
+            self.folded = np.reshape(self.raw, (self.count, -1))
+            self.folded = np.mean(self.folded, axis=0)
+            self.folded = self.folded - np.mean(self.folded)
+        else:
+            self.folded = self.raw - np.mean(self.raw)
         self.len = len(self.folded)
+        self.df = 1 / (self.dt * self.len)
 
     def compute_fft(self, plot=False):
-        fft_raw = np.fft.fft(self.folded)/self.len
-        self.fft = fft_raw * self.dt * self.len
+        fft_raw = np.fft.fft(self.folded)
+        self.fft = fft_raw * self.dt
         self.xf = fftfreq(self.len, self.dt)[:self.len//2]
         if plot:
             plt.title(f"{self.name}")
@@ -54,9 +60,13 @@ class ResData():
 
         self.p_dac = Wf(self.data[0], self.dt, self.count, 'Piezo DAC')
         self.detuning = Wf(self.data[1], self.dt, self.count, 'Detuning')
+        self.avdiff = Wf(self.data[2], self.dt, self.count, 'AVDIFF')
+        self.bvdiff = Wf(self.data[3], self.dt, self.count, 'BVDIFF')
         self.tf()
 
-    def plot_raw_data(self, start, end):
+    def plot_raw_data(self, start=0, end=None):
+        if end is None:
+            end = self.data_len
         fig, axs = plt.subplots(self.num_colums, 1)
         fig.suptitle("Raw data")
         y_labels = ['DAC', 'Detuning [Hz]', 'AVDIFF [V]', 'BVDIFF [V]']
@@ -68,29 +78,28 @@ class ResData():
 
     def tf(self):
         det_fft = self.detuning.fft[0:self.p_dac.len//2]
-        p_dac_fft = self.p_dac.fft[0:self.p_dac.len//2]
+        #p_dac_fft = self.p_dac.fft[0:self.p_dac.len//2]
+        p_dac_fft = self.avdiff.fft[0:self.p_dac.len//2]
         self.tf_real = np.real(det_fft/p_dac_fft)
         self.tf_imag = np.imag(det_fft/p_dac_fft)
         self.tf_mag = np.sqrt(self.tf_real**2 + self.tf_imag**2)
         self.tf_phs = np.unwrap(np.arctan2(self.tf_imag, self.tf_real))
 
-    def plot_tf(self, start, end):
-        amp_max = np.max(self.tf_mag[start:end*3])
-        plt.xlabel('Frequency [Hz]')
-        plt.ylabel('A [Hz/V]')
-        plt.plot(self.p_dac.xf, self.tf_real, label='Real')
-        plt.plot(self.p_dac.xf, self.tf_imag, label='Imaginary')
-        plt.xlim(start, end)
-        plt.ylim(-1.1 * amp_max, 1.1 * amp_max)
-        plt.legend()
-        plt.show()
+    def plot_tf(self, start, end, fig1, fig2):
+        start = int(start/self.p_dac.df)
+        end = int(end/self.p_dac.df)
+        real = self.tf_real[start:end]
+        imag = self.tf_imag[start:end]
+        mag = self.tf_mag[start:end]
+        freq = self.p_dac.xf[start:end]
+        plt.figure(fig1)
+        plt.plot(freq, real, label=f'Real {self.datafile.split("/")[-1]}')
+        plt.plot(freq, imag, label=f'Imaginary {self.datafile.split("/")[-1]}')
 
+        plt.figure(fig2)
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('A [Hz/V]')
-        plt.plot(self.p_dac.xf, self.tf_mag)
-        plt.xlim(start, end)
-        plt.ylim(0, 1.1 * amp_max)
-        plt.show()
+        plt.plot(freq, mag, label=f'{self.datafile.split("/")[-1]}')
 
 
 if __name__ == "__main__":
@@ -98,19 +107,59 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description="Transfer Function plotter")
-    parser.add_argument('-f', '--file', dest='datafile', required=True,
-                        help='Resonance control chassis data file')
+    parser.add_argument("-f", "--file_list", nargs="+", required=True,
+                        help="List of files to stack")
     parser.add_argument('-c', '--count', dest='count', required=True, type=int,
                         help='Number of chirps in the res file')
     parser.add_argument('-wsp', '--wave_samp_per', dest='wsp', default=1,
                         type=int, help='Waveform decimation factor')
     args = parser.parse_args()
 
-    res_data = ResData(args.datafile, args.count, args.wsp)
+    fig1 = plt.figure(num="TF Real and Imag")
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('A [Hz/V]')
+    fig2 = plt.figure(num="TF Magnitude")
 
-    start = 0
-    end = 80
-    res_data.plot_raw_data(start, end)
-    f_start = 1
-    f_end = 80
-    res_data.plot_tf(f_start, f_end)
+    for file in args.file_list:
+        res_data = ResData(file, args.count, args.wsp)
+
+        filename = file.split('/')[-1]
+        pattern = (
+            r"^(?P<resolution>res\d+)_"
+            r"(?P<signal_type>[a-zA-Z]+)_"
+            r"(?P<start_freq>\d+Hz)_"
+            r"(?P<end_freq>\d+Hz)_"
+            r"(?P<period>per\d+)_"
+            r"(?P<wsp>wsp\d+)_"
+            r"(?P<date>\d{8})_"
+            r"(?P<time>\d{6})$"
+        )
+
+        match = re.match(pattern, filename)
+
+        if match:
+            data = match.groupdict()
+            
+            # Optional: Parse the date and time strings into a nice datetime object
+            dt_string = f"{data['date']}_{data['time']}"
+            data['timestamp'] = datetime.strptime(dt_string, "%Y%m%d_%H%M%S")
+            
+            # Print the clean results
+            print("Parsing Successful!\n")
+            for key, value in data.items():
+                print(f"{key.upper():<12}: {value}")
+
+            f_start = int(data['start_freq'].removesuffix("Hz"))
+            f_end = int(data['end_freq'].removesuffix("Hz"))
+        else:
+            print("Filename didn't match the expected format.")
+            f_start = 50
+            f_end = 80
+
+        #res_data.plot_raw_data()
+        res_data.plot_tf(f_start, f_end, fig1, fig2)
+    plt.figure(fig1)
+    plt.legend()
+    plt.figure(fig2)
+    plt.legend()
+    plt.show()
