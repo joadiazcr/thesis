@@ -15,13 +15,13 @@ plt.rc('figure', titlesize=18)
 
 
 class Wf:
-    def __init__(self, raw, dt, count, name):
+    def __init__(self, raw, dt, count, name, waveform_plot=False):
         self.raw = raw
         self.dt = dt
         self.name = name
         self.count = count
         self.fold()
-        self.compute_fft(plot=False)
+        self.compute_fft(plot=waveform_plot)
 
     def fold(self):
         if True:
@@ -38,13 +38,14 @@ class Wf:
         self.fft = fft_raw * self.dt
         self.xf = fftfreq(self.len, self.dt)[:self.len//2]
         if plot:
-            plt.title(f"{self.name}")
+            fig_raw = plt.figure(num=f'{self.name} FFT')
+            plt.figure(fig_raw)
+            plt.title(f"{self.name} FFT")
             plt.plot(self.xf, 2.0/self.len * np.abs(self.fft[0:self.len//2]))
-            plt.show()
 
 
 class ResData():
-    def __init__(self, datafile, count, wsp):
+    def __init__(self, datafile, count, wsp, waveform_plot=False):
         self.datafile = datafile
         self.count = count
         self.wsp = wsp
@@ -58,23 +59,32 @@ class ResData():
         self.time = np.arange(0, self.dt*self.data_len, self.dt)
         self.df = 1 / (self.dt * self.data_len)
 
-        self.p_dac = Wf(self.data[0], self.dt, self.count, 'Piezo DAC')
-        self.detuning = Wf(self.data[1], self.dt, self.count, 'Detuning')
-        self.avdiff = Wf(self.data[2], self.dt, self.count, 'AVDIFF')
-        self.bvdiff = Wf(self.data[3], self.dt, self.count, 'BVDIFF')
+        self.p_dac = Wf(self.data[0], self.dt, self.count, 'Piezo DAC', waveform_plot)
+        self.detuning = Wf(self.data[1], self.dt, self.count, 'Detuning', waveform_plot)
+        self.avdiff = Wf(self.data[2], self.dt, self.count, 'AVDIFF', waveform_plot)
+        self.bvdiff = Wf(self.data[3], self.dt, self.count, 'BVDIFF', waveform_plot)
+        self.waveforms = [self.p_dac, self.detuning, self.avdiff, self.bvdiff]
         self.tf()
 
-    def plot_raw_data(self, start=0, end=None):
+    def plot_raw_data(self, fig, axs, start=0, end=None):
         if end is None:
             end = self.data_len
-        fig, axs = plt.subplots(self.num_colums, 1)
         fig.suptitle("Raw data")
         y_labels = ['DAC', 'Detuning [Hz]', 'AVDIFF [V]', 'BVDIFF [V]']
         for i in range(self.num_colums):
             axs[i].plot(self.time[start:end], self.data[i][start:end])
             axs[i].set_ylabel(y_labels[i])
         axs[self.num_colums-1].set_xlabel("Time [seconds]")
-        plt.show()
+
+    def plot_fft(self, fig, axs, start=0, end=None):
+        if end is None:
+            end = self.data_len
+        fig.suptitle("FFTs")
+        y_labels = ['DAC', 'Detuning [Hz]', 'AVDIFF [V]', 'BVDIFF [V]']
+        for i, wf in enumerate(self.waveforms):
+            axs[i].plot(wf.xf, 2.0/wf.len * np.abs(wf.fft[0:wf.len//2]))
+            axs[i].set_ylabel(y_labels[i])
+        axs[self.num_colums-1].set_xlabel("Frequency [Hz]")
 
     def tf(self):
         det_fft = self.detuning.fft[0:self.p_dac.len//2]
@@ -113,15 +123,22 @@ if __name__ == "__main__":
                         help='Number of chirps in the res file')
     parser.add_argument('-wsp', '--wave_samp_per', dest='wsp', default=1,
                         type=int, help='Waveform decimation factor')
+    parser.add_argument("-wp", "--waveform_plot", action="store_true",
+                        default=False,
+                        help="Plot waveform time and frequency domain")
     args = parser.parse_args()
 
-    fig1 = plt.figure(num="TF Real and Imag")
+    fig1 = plt.figure(num="TF Real and Imag", figsize=(14, 8))
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('A [Hz/V]')
-    fig2 = plt.figure(num="TF Magnitude")
+    fig2 = plt.figure(num="TF Magnitude", figsize=(14, 8))
+    fig3 = plt.figure(num="Raw data", figsize=(14, 8))
+    axs3 = fig3.subplots(4, 1, sharex=True)
+    fig4 = plt.figure(num="FFTs", figsize=(14, 8))
+    axs4 = fig4.subplots(4, 1, sharex=True)
 
     for file in args.file_list:
-        res_data = ResData(file, args.count, args.wsp)
+        res_data = ResData(file, args.count, args.wsp, args.waveform_plot)
 
         filename = file.split('/')[-1]
         pattern = (
@@ -156,8 +173,11 @@ if __name__ == "__main__":
             f_start = 50
             f_end = 80
 
-        #res_data.plot_raw_data()
+        res_data.plot_raw_data(fig3, axs3)
+        res_data.plot_fft(fig4, axs4)
         res_data.plot_tf(f_start, f_end, fig1, fig2)
+
+    
     plt.figure(fig1)
     plt.legend()
     plt.figure(fig2)
