@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.fft import fftfreq
 import re
 from datetime import datetime
+from scipy import signal
 
 
 plt.rc('font', family='serif')
@@ -22,6 +23,7 @@ class Wf:
         self.count = count
         self.fold()
         self.compute_fft(plot=waveform_plot)
+        self.compute_psd()
 
     def fold(self):
         if True:
@@ -42,6 +44,9 @@ class Wf:
             plt.figure(fig_raw)
             plt.title(f"{self.name} FFT")
             plt.plot(self.xf, 2.0/self.len * np.abs(self.fft[0:self.len//2]))
+
+    def compute_psd(self):
+        self.freq_psd, self.psd = signal.periodogram(self.folded, 1/self.dt)
 
 
 class ResData():
@@ -83,6 +88,16 @@ class ResData():
         y_labels = ['DAC', 'Detuning [Hz]', 'AVDIFF [V]', 'BVDIFF [V]']
         for i, wf in enumerate(self.waveforms):
             axs[i].plot(wf.xf, 2.0/wf.len * np.abs(wf.fft[0:wf.len//2]))
+            axs[i].set_ylabel(y_labels[i])
+        axs[self.num_colums-1].set_xlabel("Frequency [Hz]")
+
+    def plot_psd(self, fig, axs, start=0, end=None):
+        if end is None:
+            end = self.data_len
+        fig.suptitle("PSDs")
+        y_labels = ['DAC', 'Detuning [Hz]', 'AVDIFF [V]', 'BVDIFF [V]']
+        for i, wf in enumerate(self.waveforms):
+            axs[i].semilogy(wf.freq_psd[1:], wf.psd[1:])
             axs[i].set_ylabel(y_labels[i])
         axs[self.num_colums-1].set_xlabel("Frequency [Hz]")
 
@@ -136,6 +151,8 @@ if __name__ == "__main__":
     axs3 = fig3.subplots(4, 1, sharex=True)
     fig4 = plt.figure(num="FFTs", figsize=(14, 8))
     axs4 = fig4.subplots(4, 1, sharex=True)
+    fig5 = plt.figure(num="PSDs", figsize=(14, 8))
+    axs5 = fig5.subplots(4, 1, sharex=True)
 
     for file in args.file_list:
         res_data = ResData(file, args.count, args.wsp, args.waveform_plot)
@@ -175,9 +192,9 @@ if __name__ == "__main__":
 
         res_data.plot_raw_data(fig3, axs3)
         res_data.plot_fft(fig4, axs4)
+        res_data.plot_psd(fig5, axs5)
         res_data.plot_tf(f_start, f_end, fig1, fig2)
 
-    
     plt.figure(fig1)
     plt.legend()
     plt.figure(fig2)
