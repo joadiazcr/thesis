@@ -50,17 +50,24 @@ class Wf:
 
 
 class ResData():
-    def __init__(self, datafile, count, wsp, waveform_plot=False):
+    def __init__(self, datafile, count, wsp, waveform_plot=False,
+                 rem=None, f_start=None, f_end=None):
         self.datafile = datafile
         self.count = count
         self.wsp = wsp
         self.dt = self.wsp/2e3  # 2 kHz samp rate when wsp=1
+        self.f_start = f_start
+        self.f_end = f_end
 
         with open(self.datafile) as fil:
             self.header = fil.readline().strip("# \n")
         self.data = np.loadtxt(self.datafile).T
         self.num_colums, self.data_len = self.data.shape
         print(f'Data shape: {self.num_colums} x {self.data_len}')
+        if rem:
+            self.data = self.data[:,:-rem]
+            self.num_colums, self.data_len = self.data.shape
+            print(f'Data shape: {self.num_colums} x {self.data_len}')
         self.time = np.arange(0, self.dt*self.data_len, self.dt)
         self.df = 1 / (self.dt * self.data_len)
 
@@ -81,13 +88,20 @@ class ResData():
             axs[i].set_ylabel(y_labels[i])
         axs[self.num_colums-1].set_xlabel("Time [seconds]")
 
-    def plot_fft(self, fig, axs, start=0, end=None):
-        if end is None:
+    def plot_fft(self, fig, axs):
+        if self.f_end is None:
             end = self.data_len
+        else:
+            print(self.f_end)
+            end = int(self.f_end / self.p_dac.df)
+            print(end)
         fig.suptitle("FFTs")
         y_labels = ['DAC', 'Detuning [Hz]', 'AVDIFF [V]', 'BVDIFF [V]']
         for i, wf in enumerate(self.waveforms):
-            axs[i].plot(wf.xf, 2.0/wf.len * np.abs(wf.fft[0:wf.len//2]))
+            x = wf.xf[0:end]
+            y = 2.0/wf.len * np.abs(wf.fft[0:wf.len//2])
+            y = y[0:end]
+            axs[i].plot(x, y)
             axs[i].set_ylabel(y_labels[i])
         axs[self.num_colums-1].set_xlabel("Frequency [Hz]")
 
@@ -142,6 +156,8 @@ if __name__ == "__main__":
     parser.add_argument("-wp", "--waveform_plot", action="store_true",
                         default=False,
                         help="Plot waveform time and frequency domain")
+    parser.add_argument('-r', '--remove', dest='rem', type=int, default=None,
+                        help='Number of samples to remove at the end of the file')
     args = parser.parse_args()
 
     fig1 = plt.figure(num="TF Real and Imag", figsize=(14, 8))
@@ -175,10 +191,7 @@ if __name__ == "__main__":
     )
 
     for file in args.file_list:
-        res_data = ResData(file, args.count, args.wsp, args.waveform_plot)
-
         filename = file.split('/')[-1]
-
         match1 = re.match(pattern1, filename)
         match2 = re.match(pattern2, filename)
 
@@ -208,6 +221,9 @@ if __name__ == "__main__":
             f_start = 0
             f_end = 1000
 
+        res_data = ResData(file, args.count, args.wsp,
+                           args.waveform_plot, args.rem,
+                           f_start, f_end)
         res_data.plot_raw_data(fig3, axs3)
         res_data.plot_fft(fig4, axs4)
         res_data.plot_psd(fig5, axs5)
