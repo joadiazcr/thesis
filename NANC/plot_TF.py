@@ -104,7 +104,8 @@ class ResData():
     def tf(self):
         det_fft = self.detuning.fft[0:self.p_dac.len//2]
         #p_dac_fft = self.p_dac.fft[0:self.p_dac.len//2]
-        p_dac_fft = self.avdiff.fft[0:self.p_dac.len//2]
+        #p_dac_fft = self.avdiff.fft[0:self.p_dac.len//2]
+        p_dac_fft = self.bvdiff.fft[0:self.p_dac.len//2]
         self.tf_real = np.real(det_fft/p_dac_fft)
         self.tf_imag = np.imag(det_fft/p_dac_fft)
         self.tf_mag = np.sqrt(self.tf_real**2 + self.tf_imag**2)
@@ -154,11 +155,7 @@ if __name__ == "__main__":
     fig5 = plt.figure(num="PSDs", figsize=(14, 8))
     axs5 = fig5.subplots(4, 1, sharex=True)
 
-    for file in args.file_list:
-        res_data = ResData(file, args.count, args.wsp, args.waveform_plot)
-
-        filename = file.split('/')[-1]
-        pattern = (
+    pattern1 = (
             r"^(?P<resolution>res\d+)_"
             r"(?P<signal_type>[a-zA-Z]+)_"
             r"(?P<start_freq>\d+Hz)_"
@@ -168,11 +165,25 @@ if __name__ == "__main__":
             r"(?P<date>\d{8})_"
             r"(?P<time>\d{6})$"
         )
+    
+    pattern2 = (
+        r"res_"
+        r"(?P<device>\w+)_"
+        r"(?P<date>\d{8})_"
+        r"(?P<time>\d{6})_"
+        r"(?P<start_freq>\d+)to(?P<end_freq>\d+Hz)(?P<extra>.*)$"
+    )
 
-        match = re.match(pattern, filename)
+    for file in args.file_list:
+        res_data = ResData(file, args.count, args.wsp, args.waveform_plot)
 
-        if match:
-            data = match.groupdict()
+        filename = file.split('/')[-1]
+
+        match1 = re.match(pattern1, filename)
+        match2 = re.match(pattern2, filename)
+
+        if match1:
+            data = match1.groupdict()
             
             # Optional: Parse the date and time strings into a nice datetime object
             dt_string = f"{data['date']}_{data['time']}"
@@ -185,10 +196,17 @@ if __name__ == "__main__":
 
             f_start = int(data['start_freq'].removesuffix("Hz"))
             f_end = int(data['end_freq'].removesuffix("Hz"))
+
+        elif match2:
+            print("It matches format 2")
+            data = match2.groupdict()
+            f_start = int(data['start_freq'])
+            f_end = int(data['end_freq'].removesuffix("Hz"))
+
         else:
             print("Filename didn't match the expected format.")
-            f_start = 50
-            f_end = 80
+            f_start = 0
+            f_end = 1000
 
         res_data.plot_raw_data(fig3, axs3)
         res_data.plot_fft(fig4, axs4)
