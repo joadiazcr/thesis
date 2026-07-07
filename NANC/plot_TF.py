@@ -59,17 +59,20 @@ class ResData():
         self.f_start = f_start
         self.f_end = f_end
 
+        print(f'Data file:\t{self.datafile}')
         with open(self.datafile) as fil:
             self.header = fil.readline().strip("# \n")
         self.data = np.loadtxt(self.datafile).T
         self.num_colums, self.data_len = self.data.shape
-        print(f'Data shape: {self.num_colums} x {self.data_len}')
+        print(f'Data shape:\t{self.num_colums} x {self.data_len}')
+        print(f'Data length:\t{self.data_len*self.dt:.2f} secondss')
         if rem:
             self.data = self.data[:,:-rem]
             self.num_colums, self.data_len = self.data.shape
             print(f'Data shape: {self.num_colums} x {self.data_len}')
         self.time = np.arange(0, self.dt*self.data_len, self.dt)
         self.df = 1 / (self.dt * self.data_len)
+        print(f'Freq res:\t{self.df} Hz')
 
         self.p_dac = Wf(self.data[0], self.dt, self.count, 'Piezo DAC', waveform_plot)
         self.detuning = Wf(self.data[1], self.dt, self.count, 'Detuning', waveform_plot)
@@ -123,16 +126,20 @@ class ResData():
         self.tf_real = np.real(det_fft/p_dac_fft)
         self.tf_imag = np.imag(det_fft/p_dac_fft)
         self.tf_mag = np.sqrt(self.tf_real**2 + self.tf_imag**2)
-        self.tf_phs = np.unwrap(np.arctan2(self.tf_imag, self.tf_real))
+        self.tf_phs = np.arctan2(self.tf_imag, self.tf_real)
 
-    def plot_tf(self, start, end, fig1, fig2):
+    def plot_tf(self, start, end, fig1, fig2, fig3):
         start = int(start/self.p_dac.df)
         end = int(end/self.p_dac.df)
         real = self.tf_real[start:end]
         imag = self.tf_imag[start:end]
         mag = self.tf_mag[start:end]
+        phs = self.tf_phs[start:end]
         freq = self.p_dac.xf[start:end]
+
         plt.figure(fig1)
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('A [Hz/V]')
         plt.plot(freq, real, label=f'Real {self.datafile.split("/")[-1]}')
         plt.plot(freq, imag, label=f'Imaginary {self.datafile.split("/")[-1]}')
 
@@ -141,6 +148,10 @@ class ResData():
         plt.ylabel('A [Hz/V]')
         plt.plot(freq, mag, label=f'{self.datafile.split("/")[-1]}')
 
+        plt.figure(fig3)
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Phase [deg]')
+        plt.plot(freq, np.degrees(phs), label=f'{self.datafile.split("/")[-1]}')
 
 if __name__ == "__main__":
 
@@ -161,9 +172,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     fig1 = plt.figure(num="TF Real and Imag", figsize=(14, 8))
-    plt.xlabel('Frequency [Hz]')
-    plt.ylabel('A [Hz/V]')
     fig2 = plt.figure(num="TF Magnitude", figsize=(14, 8))
+    fig_tf_p = plt.figure(num="TF Phase", figsize=(14, 8))
     fig3 = plt.figure(num="Raw data", figsize=(14, 8))
     axs3 = fig3.subplots(4, 1, sharex=True)
     fig4 = plt.figure(num="FFTs", figsize=(14, 8))
@@ -218,8 +228,8 @@ if __name__ == "__main__":
 
         else:
             print("Filename didn't match the expected format.")
-            f_start = 0
-            f_end = 1000
+            f_start = 700
+            f_end = 800
 
         res_data = ResData(file, args.count, args.wsp,
                            args.waveform_plot, args.rem,
@@ -227,7 +237,7 @@ if __name__ == "__main__":
         res_data.plot_raw_data(fig3, axs3)
         res_data.plot_fft(fig4, axs4)
         res_data.plot_psd(fig5, axs5)
-        res_data.plot_tf(f_start, f_end, fig1, fig2)
+        res_data.plot_tf(f_start, f_end, fig1, fig2, fig_tf_p)
 
     plt.figure(fig1)
     plt.legend()
