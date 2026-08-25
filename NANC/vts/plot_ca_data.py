@@ -1,9 +1,13 @@
 from dataclasses import dataclass, field
 import itertools
-import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
+import os
+parent_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, parent_directory)
+import utils
 
 
 def flatten_lists(x):
@@ -44,12 +48,12 @@ class CamonitorFile():
 
     def time_axis(self):
         decim_rf = self.df.loc["ACQ_DECIM", 'Value'][0]
-        ts_rf = (14 * 2 * 33 * decim_rf) / 1.32e9
-        self.taxis_rf = np.arange(len(self.df.loc[f"CAV:IWF", 'Value'])) * ts_rf
+        self.ts_rf = (14 * 2 * 33 * decim_rf) / 1.32e9
+        self.taxis_rf = np.arange(len(self.df.loc[f"CAV:IWF", 'Value'])) * self.ts_rf
 
         decim_rc = 1 # Default. Check!
-        ts_rc = decim_rc / 2.0e3 # 2 KHz is the maximun sampling rate
-        self.taxis_rc = np.arange(len(self.df.loc[f"PZT:DF:WF", 'Value'])) * ts_rc
+        self.ts_rc = decim_rc / 2.0e3 # 2 KHz is the maximun sampling rate
+        self.taxis_rc = np.arange(len(self.df.loc[f"PZT:DF:WF", 'Value'])) * self.ts_rc
 
     def plot_wf(self, pv):
         i_wf = self.df.loc[f"{pv}:IWF", 'Value']
@@ -73,13 +77,11 @@ class CamonitorFile():
     def plot_detuning(self):
         det_wf = self.df.loc["DF:WF", 'Value']
         det_pzt_wf = self.df.loc["PZT:DF:WF", 'Value']
-        plt.plot(self.taxis_rc, det_pzt_wf, label='PZT Detuning')
-        plt.plot(self.taxis_rf, det_wf, label='RFS Detuning')
-        plt.xlabel('Time [s]')
-        plt.ylabel('Detuning [Hz]')
-        plt.title('Cavity Detuning')
-        plt.legend()
-        plt.show()
+        time_axs = [self.taxis_rc, self.taxis_rf]
+        data = [det_pzt_wf, det_wf]
+        labels = ['PZT Detuning', 'RFS Detuning']
+        dts = [self.ts_rc, self.ts_rf]
+        utils.plot_detuning(time_axs, data, labels, dts, max_freq=250)
 
 
 if __name__ == "__main__":

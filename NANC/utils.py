@@ -69,3 +69,93 @@ def peak_finder(data):
     actual_heights = peak_heights[top_10_idx_in_peaks]
 
     return actual_heights, actual_indices
+
+
+def plot_detuning(time, data, label, dts, max_freq=250, req=None):
+    import matplotlib.pyplot as plt
+    from scipy.fft import fftfreq
+    from scipy import signal
+
+    plt.figure(1)
+    plt.xlabel('Time [s]')
+    plt.ylabel('Detuning [Hz]')
+    if req:
+        plt.axhline(y=-10, color='r', linestyle='--', alpha=0.3)
+        plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
+    #plt.xlim(time[0], time[-1])
+
+    plt.figure(2)
+    plt.xlabel('Frequency [Hz]')
+    plt.xlim(0, max_freq)
+
+    plt.figure(3)
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('Detuning PSD [Hz]')
+    plt.xlim(0, max_freq)
+
+    plt.figure(4)
+    plt.xlabel('Detuning [Hz]')
+    plt.ylabel('Counts')
+    if req:
+        plt.axvline(x=-10, color='r', linestyle='--', alpha=0.3)
+        plt.axvline(x=10, color='r', linestyle='--', alpha=0.3)
+
+    plt.figure(5)
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('Detuning STD [Hz]')
+    plt.xlim(0, max_freq)
+    plt.ylim((0, 15))
+
+    nc = len(data)
+    fig, axes = plt.subplots(1, nc, figsize=(16, 5), sharey=True)
+    plt.subplots_adjust(wspace=0)
+
+    for i, sublist in enumerate(data):
+        sublist = np.array(sublist)
+        N = len(sublist)
+        plt.figure(1)
+        plt.plot(time[i], sublist, label=label[i])
+
+        # FFT
+        fft_raw = np.fft.fft(sublist)/len(sublist)
+        fft = fft_raw*dts[i]*N
+        xf = fftfreq(N, dts[i])[:N//2]
+        plt.figure(2)
+        plt.plot(xf, 2.0/N * np.abs(fft[0:N//2]), label=label[i])
+
+        # Power Spectral Density
+        freq, psd = signal.periodogram(sublist, 1/dts[i])
+        plt.figure(3)
+        plt.semilogy(freq[1:], psd[1:], label=label[i])
+        plt.legend(loc='upper right')
+        plt.tight_layout()
+
+        plt.figure(4)
+        plt.hist(sublist, bins=140,  histtype='step', log='True', label=label[i])
+
+        # Cumulative detuning STD
+        fft_raw[0] = 0
+        c_d = np.sqrt(np.cumsum(abs(fft_raw**2)))*np.sqrt(2)
+        plt.figure(5)
+        plt.plot(fftfreq(N, dts[i])[:N//2], c_d[:N//2], label=label[i])
+
+        plt.figure(fig)
+        f, t, Sxx = signal.spectrogram(sublist, 1/dts[i],
+                                       nperseg=1000, noverlap=750)
+        axes[i].pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud',
+                           cmap='viridis', vmin=-100, vmax=0)
+        axes[i].set_title(label=label[i], size=16)
+        axes[i].set_xlabel('Time [sec]')
+        if i == 0:
+            axes[i].set_ylabel('Frequency [Hz]')
+        axes[i].set_ylim([0, 100])
+
+    for i in range(5):
+        plt.figure(i+1)
+        plt.legend(loc='upper right')
+        plt.tight_layout()
+    plt.show()
+
+    
+    
+    
