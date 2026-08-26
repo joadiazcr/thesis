@@ -83,6 +83,17 @@ class CamonitorFile():
         dts = [self.ts_rc, self.ts_rf]
         utils.plot_detuning(time_axs, data, labels, dts, max_freq=250)
 
+    def split_plot_rfs_det(self, split_index):
+        det_wf = self.df.loc["DF:WF", 'Value']
+        time_axs = [self.taxis_rf]
+        det_wf_a = det_wf[:split_index]
+        det_wf_b = det_wf[-split_index:]
+        data = [det_wf_a, det_wf_b]
+        labels = ['NANC OFF', 'NANC ON']
+        time_axs = [self.taxis_rf[:split_index], self.taxis_rf[:split_index]]
+        dts = [self.ts_rf, self.ts_rf]
+        utils.plot_detuning(time_axs, data, labels, dts, max_freq=250, req=True)
+
 
 if __name__ == "__main__":
 
@@ -93,6 +104,8 @@ if __name__ == "__main__":
                         help='Waveform data file')
     parser.add_argument('-p', '--prefix', dest='prefix', required=True,
                         help='PV cavity prefix (e.g. VTS:L1B:H110:)')
+    parser.add_argument("-s", "--split_index", type=int, default=None,
+                        help="Index of the row to split the data")
     args = parser.parse_args()
 
     print("Changing font settings...")
@@ -109,4 +122,5 @@ if __name__ == "__main__":
     print(ca_file.df.head(40))
 
     #ca_file.plot_wf('CAV')
-    ca_file.plot_rfs_res_detuning()
+    #ca_file.plot_rfs_res_detuning()
+    ca_file.split_plot_rfs_det(split_index=args.split_index)

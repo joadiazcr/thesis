@@ -76,13 +76,13 @@ def plot_detuning(time, data, label, dts, max_freq=250, req=None):
     from scipy.fft import fftfreq
     from scipy import signal
 
+    plt.rc('font', family='serif')
+    plt.rc('mathtext', fontset='cm')
+
     plt.figure(1)
     plt.xlabel('Time [s]')
     plt.ylabel('Detuning [Hz]')
-    if req:
-        plt.axhline(y=-10, color='r', linestyle='--', alpha=0.3)
-        plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
-    #plt.xlim(time[0], time[-1])
+    plt.xlim(time[0][0], time[0][-1])
 
     plt.figure(2)
     plt.xlabel('Frequency [Hz]')
@@ -96,15 +96,12 @@ def plot_detuning(time, data, label, dts, max_freq=250, req=None):
     plt.figure(4)
     plt.xlabel('Detuning [Hz]')
     plt.ylabel('Counts')
-    if req:
-        plt.axvline(x=-10, color='r', linestyle='--', alpha=0.3)
-        plt.axvline(x=10, color='r', linestyle='--', alpha=0.3)
 
     plt.figure(5)
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Detuning STD [Hz]')
     plt.xlim(0, max_freq)
-    plt.ylim((0, 15))
+    plt.ylim((0, 8))
 
     nc = len(data)
     fig, axes = plt.subplots(1, nc, figsize=(16, 5), sharey=True)
@@ -148,7 +145,7 @@ def plot_detuning(time, data, label, dts, max_freq=250, req=None):
         axes[i].set_xlabel('Time [sec]')
         if i == 0:
             axes[i].set_ylabel('Frequency [Hz]')
-        axes[i].set_ylim([0, 100])
+        axes[i].set_ylim([0, 200])
 
         up_peak = np.amax(sublist)
         lw_peak = np.amax(-sublist)
@@ -157,6 +154,15 @@ def plot_detuning(time, data, label, dts, max_freq=250, req=None):
         print(f'Peak detuning: {peak:.2f} Hz')
         print(f'Detuning STD:\t{np.std(sublist):.2f} Hz')
 
+    plt.figure(1)
+    if False:
+        plt.axhline(y=-10, color='r', linestyle='--', alpha=0.3)
+        plt.axhline(y=10, color='r', linestyle='--', alpha=0.3)
+
+    plt.figure(4)
+    if False:
+        plt.axvline(x=-10, color='r', linestyle='--', alpha=0.3)
+        plt.axvline(x=10, color='r', linestyle='--', alpha=0.3)
 
     for i in range(5):
         plt.figure(i+1)
