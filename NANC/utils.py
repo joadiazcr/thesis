@@ -150,12 +150,16 @@ def plot_detuning(time, data, label, dts, max_freq=250, req=None):
             axes[i].set_ylabel('Frequency [Hz]')
         axes[i].set_ylim([0, 100])
 
+        up_peak = np.amax(sublist)
+        lw_peak = np.amax(-sublist)
+        peak = max(up_peak, lw_peak)
+        print(f'\n{label[i]}')
+        print(f'Peak detuning: {peak:.2f} Hz')
+        print(f'Detuning STD:\t{np.std(sublist):.2f} Hz')
+
+
     for i in range(5):
         plt.figure(i+1)
         plt.legend(loc='upper right')
         plt.tight_layout()
     plt.show()
-
-    
-    
-    

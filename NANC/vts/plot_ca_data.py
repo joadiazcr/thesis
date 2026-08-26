@@ -48,8 +48,8 @@ class CamonitorFile():
 
     def time_axis(self):
         decim_rf = self.df.loc["ACQ_DECIM", 'Value'][0]
-        self.ts_rf = (14 * 2 * 33 * decim_rf) / 1.32e9
-        self.taxis_rf = np.arange(len(self.df.loc[f"CAV:IWF", 'Value'])) * self.ts_rf
+        self.ts_rf = (14 * 2 * 33 * decim_rf) / 1.315e9
+        self.taxis_rf = np.arange(len(self.df.loc[f"DF:WF", 'Value'])) * self.ts_rf
 
         decim_rc = 1 # Default. Check!
         self.ts_rc = decim_rc / 2.0e3 # 2 KHz is the maximun sampling rate
@@ -74,7 +74,7 @@ class CamonitorFile():
         ax[0].legend()
         plt.show()
 
-    def plot_detuning(self):
+    def plot_rfs_res_detuning(self):
         det_wf = self.df.loc["DF:WF", 'Value']
         det_pzt_wf = self.df.loc["PZT:DF:WF", 'Value']
         time_axs = [self.taxis_rc, self.taxis_rf]
@@ -109,4 +109,4 @@ if __name__ == "__main__":
     print(ca_file.df.head(40))
 
     #ca_file.plot_wf('CAV')
-    ca_file.plot_detuning()
+    ca_file.plot_rfs_res_detuning()
