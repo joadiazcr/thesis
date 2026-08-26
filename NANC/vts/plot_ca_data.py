@@ -5,9 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import os
+import matplotlib.dates as mdates
+import datetime
 parent_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_directory)
 import utils
+import plot_camonitor
 
 
 def flatten_lists(x):
@@ -94,6 +97,95 @@ class CamonitorFile():
         dts = [self.ts_rf, self.ts_rf]
         utils.plot_detuning(time_axs, data, labels, dts, max_freq=250, req=True)
 
+    def plot_overview(self):
+        target_pvs = ['AACTMEAN', 'DF:STD', 'CNTT', 'FWD:AMEAN']
+        d_fmt = "%m/%d/%Y %H:%M:%S.%f"
+
+        ca_overview = plot_camonitor.CamonitorFile(self.filename)
+        ca_overview.load_data()
+        plot_df = ca_overview.df
+
+        # Filter for specific PVs if requested
+        if target_pvs:
+            mask = plot_df['variable'].str.contains('|'.join(target_pvs))
+            plot_df = plot_df[mask]
+        
+        # Get unique variables to plot
+        groups = plot_df.groupby('variable')
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        color = 'black'
+        for name, group in groups:
+            if 'CNTT' in name:
+                ax4 = ax.twinx()
+                lns1 = ax4.step(group['timestamp'], group['value_numeric'],
+                                label=':'.join(name.split(':')[3:]),
+                                color='brown', linewidth=4, alpha=0.8)
+                ax4.spines["right"].set_position(("axes", 1.05))
+                ax4.set_ylabel('Clip limit count', fontsize=28, color='brown')
+                ax4.tick_params(axis='y', colors='brown')
+                ax4.spines['right'].set_color('brown')
+                ax4.set_ylim((8700,8950))
+            elif 'AACT' in name:
+                axs = ax
+                color='red'
+                lns2 = axs.plot(group['timestamp'], group['value_numeric'],
+                         label=':'.join(name.split(':')[3:]),
+                         color = color, linewidth=4, alpha=0.5)
+                axs.set_ylim(0,0.8)
+                axs.set_ylabel('Amplitude [MV]', fontsize=28, color='red')
+                axs.tick_params(axis='y', colors='red')
+                axs.spines['left'].set_color('red')
+            elif 'AMEAN' in name:
+                ax2 = ax.twinx()
+                color='blue'
+                lns3 = ax2.plot(group['timestamp'], group['value_numeric'],
+                                label=':'.join(name.split(':')[3:]),
+                                color = color, linewidth=4, alpha=0.5)
+                ax2.spines["left"].set_position(("axes", -0.05))
+                ax2.yaxis.set_label_position('left')
+                ax2.yaxis.set_ticks_position('left')
+                ax2.set_ylabel(r'Amplitude [$\sqrt{W}$]', fontsize=28, color='blue')
+                ax2.tick_params(axis='y', colors='blue')
+                ax2.spines['left'].set_color('blue')
+                ax2.set_ylim(7,12)
+            elif 'DF:STD' in name:
+                ax3 = ax.twinx()
+                color='green'
+                lns4 = ax3.plot(group['timestamp'], group['value_numeric'],
+                         label=':'.join(name.split(':')[3:]),
+                         color = color, linewidth=4, alpha=0.5)
+                ax3.set_ylim(0,20)
+                ax3.set_ylabel('Detuning [Hz]', fontsize=28, color='green')
+                ax3.tick_params(axis='y', colors='green')
+                ax3.spines['right'].set_color('green')
+
+        lns = lns1 + lns2 + lns3 + lns4
+        labs = [l.get_label() for l in lns]
+        ax4.legend(lns, labs, fontsize=24, loc='upper right', framealpha=0.8)
+
+        myFmt = mdates.DateFormatter('%H:%M:%S')
+        ax.xaxis.set_major_formatter(myFmt)
+
+
+        # Draw Vertical Lines for every "NANC ON" event found
+        nanc_on_times = [datetime.datetime.strptime('08/20/2026 15:27:04.00', d_fmt)]
+        start_time = '2026-08-20 15:24:33'
+        end_time = '2026-08-20 15:29:30'
+        for t_event in nanc_on_times:
+            ax.axvline(x=t_event, color='grey', linestyle='--', linewidth=3)
+            t_text_off = t_event - pd.Timedelta(seconds=37)
+            ax.text(t_text_off, 0.7, '<-- NANC OFF ', color='grey', fontsize=24, fontweight='bold')
+            ax.text(t_event, 0.7, '   NANC ON -->', color='grey', fontsize=24, fontweight='bold')
+
+        if start_time and end_time:
+            ax.set_xlim(pd.to_datetime(start_time), pd.to_datetime(end_time))
+        ax.grid(True, alpha=0.3)
+
+        ax.tick_params(axis='x')
+        plt.tight_layout()
+        plt.show()
+
 
 if __name__ == "__main__":
 
@@ -123,4 +215,5 @@ if __name__ == "__main__":
 
     #ca_file.plot_wf('CAV')
     #ca_file.plot_rfs_res_detuning()
-    ca_file.split_plot_rfs_det(split_index=args.split_index)
+    #ca_file.split_plot_rfs_det(split_index=args.split_index)
+    ca_file.plot_overview()
