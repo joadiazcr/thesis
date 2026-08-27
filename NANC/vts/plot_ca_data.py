@@ -220,10 +220,10 @@ if __name__ == "__main__":
     #ca_file.split_plot_rfs_det(split_index=args.split_index)
     #ca_file.plot_overview()
 
-    f1 = '../../../../VTS/ca_data/ca_data/SELAP20260820_162137.txt'
-    f2 = '../../../../VTS/ca_data/ca_data/SELAP20260820_162646.txt'
-    f3 = '../../../../VTS/ca_data/ca_data/SELAP20260820_163001.txt'
-    f4 = '../../../../VTS/ca_data/ca_data/SELAP20260820_163549.txt'
+    f1 = '../../../VTS/ca_data/ca_data/SELAP20260820_162137.txt'
+    f2 = '../../../VTS/ca_data/ca_data/SELAP20260820_162646.txt'
+    f3 = '../../../VTS/ca_data/ca_data/SELAP20260820_163001.txt'
+    f4 = '../../../VTS/ca_data/ca_data/SELAP20260820_163549.txt'
 
 
     ca_f1 = CamonitorFile(f1, args.prefix)
@@ -256,14 +256,37 @@ if __name__ == "__main__":
     wf_f4 = np.array(i_wf_f4) + 1j * np.array(q_wf_f4)
 
     fig, ax = plt.subplots(4, 1, figsize=(20, 12), sharex=True)
-    ax[0].plot(ca_f1.taxis_rf, np.abs(wf_f1))
-    ax[0].plot(ca_f2.taxis_rf, np.abs(wf_f2))
-    ax[0].plot(ca_f3.taxis_rf, np.abs(wf_f3))
-    ax[0].plot(ca_f4.taxis_rf, np.abs(wf_f4))
-    ax[1].plot(ca_f1.taxis_rf, np.degrees(np.angle(wf_f1)))
-    ax[2].plot(ca_f1.taxis_rf, i_wf_f1)
-    ax[3].plot(ca_f1.taxis_rf, q_wf_f1)
-    ax[0].set_xlim(0, ca_f1.taxis_rf[-1])
+    print(len(wf_f4))
+    f1_s = 196000
+    f1_e = 199000
+    f2_s = 191750
+    f2_e = 194750
+    f3_s = 86100
+    f3_e = 89100
+    f4_s = 159100
+    f4_e = 162100
+    
+    ax[0].plot(ca_f1.taxis_rf[:f1_e-f1_s], np.abs(wf_f1[f1_s:f1_e]), label = '-2e-4')
+    ax[0].plot(ca_f2.taxis_rf[:f2_e-f2_s], np.abs(wf_f2[f2_s:f2_e]), label = '-3e-4')
+    ax[0].plot(ca_f3.taxis_rf[:f3_e-f3_s], np.abs(wf_f3[f3_s:f3_e]), label = '-2e-3')
+    ax[0].plot(ca_f4.taxis_rf[:f4_e-f4_s], np.abs(wf_f4[f4_s:f4_e]), label = '-1e-3')
+
+    ax[1].plot(ca_f1.taxis_rf[:f1_e-f1_s], np.degrees(np.angle(wf_f1[f1_s:f1_e])))
+    ax[1].plot(ca_f2.taxis_rf[:f2_e-f2_s], np.degrees(np.angle(wf_f2[f2_s:f2_e])))
+    ax[1].plot(ca_f3.taxis_rf[:f3_e-f3_s], np.degrees(np.angle(wf_f3[f3_s:f3_e])))
+    ax[1].plot(ca_f4.taxis_rf[:f4_e-f4_s], np.degrees(np.angle(wf_f4[f4_s:f4_e])))
+
+    ax[2].plot(ca_f1.taxis_rf[:f1_e-f1_s], i_wf_f1[f1_s:f1_e])
+    ax[2].plot(ca_f2.taxis_rf[:f2_e-f2_s], i_wf_f2[f2_s:f2_e])
+    ax[2].plot(ca_f3.taxis_rf[:f3_e-f3_s], i_wf_f3[f3_s:f3_e])
+    ax[2].plot(ca_f4.taxis_rf[:f4_e-f4_s], i_wf_f4[f4_s:f4_e])
+
+    ax[3].plot(ca_f1.taxis_rf[:f1_e-f1_s], q_wf_f1[f1_s:f1_e])
+    ax[3].plot(ca_f2.taxis_rf[:f2_e-f2_s], q_wf_f2[f2_s:f2_e])
+    ax[3].plot(ca_f3.taxis_rf[:f3_e-f3_s], q_wf_f3[f3_s:f3_e])
+    ax[3].plot(ca_f4.taxis_rf[:f4_e-f4_s], q_wf_f4[f4_s:f4_e])
+
+    #ax[0].set_xlim(0, ca_f1.taxis_rf[-1])
     ax[0].set_ylabel('Amplitude [MV]')
     ax[1].set_ylabel('Phase [rad]')
     ax[2].set_ylabel('I [MV]')
