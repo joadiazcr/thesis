@@ -214,6 +214,60 @@ if __name__ == "__main__":
     print(ca_file.df.head(40))
 
     #ca_file.plot_wf('CAV')
+    #ca_file.plot_wf('FWD')
+
     #ca_file.plot_rfs_res_detuning()
     #ca_file.split_plot_rfs_det(split_index=args.split_index)
-    ca_file.plot_overview()
+    #ca_file.plot_overview()
+
+    f1 = '../../../../VTS/ca_data/ca_data/SELAP20260820_162137.txt'
+    f2 = '../../../../VTS/ca_data/ca_data/SELAP20260820_162646.txt'
+    f3 = '../../../../VTS/ca_data/ca_data/SELAP20260820_163001.txt'
+    f4 = '../../../../VTS/ca_data/ca_data/SELAP20260820_163549.txt'
+
+
+    ca_f1 = CamonitorFile(f1, args.prefix)
+    ca_f2 = CamonitorFile(f2, args.prefix)
+    ca_f3 = CamonitorFile(f3, args.prefix)
+    ca_f4 = CamonitorFile(f4, args.prefix)
+    ca_f1.load_data()
+    ca_f1.time_axis()
+    ca_f2.load_data()
+    ca_f2.time_axis()
+    ca_f3.load_data()
+    ca_f3.time_axis()
+    ca_f4.load_data()
+    ca_f4.time_axis()
+
+    i_wf_f1 = ca_f1.df.loc[f"FWD:IWF", 'Value']
+    q_wf_f1 = ca_f1.df.loc[f"FWD:QWF", 'Value']
+    wf_f1 = np.array(i_wf_f1) + 1j * np.array(q_wf_f1)
+
+    i_wf_f2 = ca_f2.df.loc[f"FWD:IWF", 'Value']
+    q_wf_f2 = ca_f2.df.loc[f"FWD:QWF", 'Value']
+    wf_f2 = np.array(i_wf_f2) + 1j * np.array(q_wf_f2)
+
+    i_wf_f3 = ca_f3.df.loc[f"FWD:IWF", 'Value']
+    q_wf_f3 = ca_f3.df.loc[f"FWD:QWF", 'Value']
+    wf_f3 = np.array(i_wf_f3) + 1j * np.array(q_wf_f3)
+
+    i_wf_f4 = ca_f4.df.loc[f"FWD:IWF", 'Value']
+    q_wf_f4 = ca_f4.df.loc[f"FWD:QWF", 'Value']
+    wf_f4 = np.array(i_wf_f4) + 1j * np.array(q_wf_f4)
+
+    fig, ax = plt.subplots(4, 1, figsize=(20, 12), sharex=True)
+    ax[0].plot(ca_f1.taxis_rf, np.abs(wf_f1))
+    ax[0].plot(ca_f2.taxis_rf, np.abs(wf_f2))
+    ax[0].plot(ca_f3.taxis_rf, np.abs(wf_f3))
+    ax[0].plot(ca_f4.taxis_rf, np.abs(wf_f4))
+    ax[1].plot(ca_f1.taxis_rf, np.degrees(np.angle(wf_f1)))
+    ax[2].plot(ca_f1.taxis_rf, i_wf_f1)
+    ax[3].plot(ca_f1.taxis_rf, q_wf_f1)
+    ax[0].set_xlim(0, ca_f1.taxis_rf[-1])
+    ax[0].set_ylabel('Amplitude [MV]')
+    ax[1].set_ylabel('Phase [rad]')
+    ax[2].set_ylabel('I [MV]')
+    ax[3].set_ylabel('Q [MV]')
+    ax[3].set_xlabel('Time [s]')
+    ax[0].legend()
+    plt.show()
